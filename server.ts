@@ -360,9 +360,9 @@ const server = createApplicationServer();
 
 // Vercel detects a root server.ts as a Node application and provides PORT.
 // The application must listen on that port; 8000 remains the local default.
-const port = Number(process.env.PORT || 8000);
-server.listen(port, () => {
-  console.log(`Server running on port ${port}`);
+const listenTarget = process.env.PORT ?? 8000;
+server.listen(listenTarget, () => {
+  console.log(`Server running on ${listenTarget}`);
 });
 
 export default server;
