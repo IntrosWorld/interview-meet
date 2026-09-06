@@ -364,5 +364,3 @@ const listenTarget = process.env.PORT ?? 8000;
 server.listen(listenTarget, () => {
   console.log(`Server running on ${listenTarget}`);
 });
-
-export default server;
