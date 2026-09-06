@@ -328,7 +328,7 @@
       <a href="/" class="btn soft">Back to Interview Page</a>
       <div>
         <div class="title">Coding Ability Test</div>
-        <p class="muted">Direct coding assessment mode. Pick language and topic, then Gemini gives a coding problem immediately.</p>
+        <p class="muted">Direct coding assessment mode. Pick a language and topic, then the AI interviewer gives you a coding problem immediately.</p>
       </div>
 
       <div class="row">
@@ -496,7 +496,7 @@
       const cleanChunk = sanitizeGeminiChunk(chunk);
       if (!cleanChunk) return;
       if (!geminiLine) {
-        geminiLine = appendLine('Gemini', '');
+        geminiLine = appendLine('AI Interviewer', '');
       }
 
       const prev = geminiLine.textContent || '';
