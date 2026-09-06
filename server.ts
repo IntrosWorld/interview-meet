@@ -358,12 +358,11 @@ function createApplicationServer() {
 
 const server = createApplicationServer();
 
-// Vercel owns the listener lifecycle. Local development still starts normally.
-if (!process.env.VERCEL) {
-  const port = Number(process.env.PORT || 8000);
-  server.listen(port, () => {
-    console.log(`Server running on http://localhost:${port}`);
-  });
-}
+// Vercel detects a root server.ts as a Node application and provides PORT.
+// The application must listen on that port; 8000 remains the local default.
+const port = Number(process.env.PORT || 8000);
+server.listen(port, () => {
+  console.log(`Server running on port ${port}`);
+});
 
 export default server;
