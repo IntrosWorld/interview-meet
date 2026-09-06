@@ -1,10 +1,11 @@
-import { serve } from '@hono/node-server';
+import { getRequestListener } from '@hono/node-server';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { GoogleGenAI, Modality } from '@google/genai';
 import * as types from '@google/genai';
 import { WebSocketServer, WebSocket } from 'ws';
 import { readFile } from 'fs/promises';
+import { createServer } from 'node:http';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -140,10 +141,9 @@ async function main() {
 
   const port = Number(process.env.PORT || 8000);
 
-  const server = serve({
-    fetch: app.fetch,
-    port,
-  });
+  // Create an explicit HTTP/1 server. `serve()` returns a ServerType union that
+  // also includes HTTP/2 servers, but `ws` can only attach to HTTP/1/HTTPS.
+  const server = createServer(getRequestListener(app.fetch));
 
   const wss = new WebSocketServer({ server });
 
@@ -344,7 +344,9 @@ async function main() {
     });
   });
 
-  console.log(`Server running on http://localhost:${port}`);
+  server.listen(port, () => {
+    console.log(`Server running on http://localhost:${port}`);
+  });
 }
 
 main();

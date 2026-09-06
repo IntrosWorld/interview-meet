@@ -4,21 +4,23 @@
   "description": "Gemini Live Agent Demo converted to Node.js",
   "main": "server.ts",
   "scripts": {
-    "dev": "tsx --watch --env-file=.env server.ts"
+    "dev": "tsx --watch --env-file=.env server.ts",
+    "typecheck": "tsc --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext --esModuleInterop --skipLibCheck server.ts"
   },
   "keywords": [],
   "author": "",
   "license": "Apache-2.0",
   "dependencies": {
     "@google/genai": "^1.30.0",
-    "hono": "^4.6.12",
-    "ws": "^8.18.0",
+    "@hono/node-server": "^1.13.7",
     "dotenv": "^16.4.5",
-    "@hono/node-server": "^1.13.7"
+    "hono": "^4.6.12",
+    "ws": "^8.18.0"
   },
   "devDependencies": {
-    "tsx": "^4.19.2",
     "@types/node": "^22.10.1",
-    "@types/ws": "^8.5.13"
+    "@types/ws": "^8.5.13",
+    "tsx": "^4.19.2",
+    "typescript": "^7.0.2"
   }
 }
