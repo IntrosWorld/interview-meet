@@ -18,6 +18,7 @@
     "ws": "^8.18.0"
   },
   "devDependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "@types/node": "^22.10.1",
     "@types/ws": "^8.5.13",
     "tsx": "^4.19.2",
