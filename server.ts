@@ -6,6 +6,7 @@ import * as types from '@google/genai';
 import { WebSocketServer, WebSocket } from 'ws';
 import { readFile } from 'fs/promises';
 import { createServer } from 'node:http';
+import { join } from 'node:path';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -133,12 +134,12 @@ function createApplicationServer() {
   app.use('/*', cors());
 
   app.get('/', async (c) => {
-    const html = await readFile('./public/index.html', 'utf-8');
+    const html = await readFile(join(process.cwd(), 'public', 'index.html'), 'utf-8');
     return c.html(html);
   });
 
   app.get('/coding', async (c) => {
-    const html = await readFile('./public/coding.html', 'utf-8');
+    const html = await readFile(join(process.cwd(), 'public', 'coding.html'), 'utf-8');
     return c.html(html);
   });
 
@@ -358,9 +359,13 @@ function createApplicationServer() {
 
 const server = createApplicationServer();
 
-// Vercel detects a root server.ts as a Node application and provides PORT.
-// The application must listen on that port; 8000 remains the local default.
-const listenTarget = process.env.PORT ?? 8000;
-server.listen(listenTarget, () => {
-  console.log(`Server running on ${listenTarget}`);
-});
+// Vercel invokes the exported server as a Function. Local development owns its
+// listener and uses port 8000 unless PORT is explicitly provided.
+if (!process.env.VERCEL) {
+  const listenTarget = process.env.PORT ?? 8000;
+  server.listen(listenTarget, () => {
+    console.log(`Server running on ${listenTarget}`);
+  });
+}
+
+export default server;
