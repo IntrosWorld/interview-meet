@@ -54,7 +54,8 @@ Create two test accounts. Sign in with each and complete a short voice and codin
 - `public/auth.js`: Firebase client authentication, navigation and themes.
 - `public/history.js`: history loading, filtering, transcript modal and deletion.
 - `public/session.js`: session creation and serialized transcript autosaving.
-- `public/design.css`, `public/room.css`: shared tokens, responsive layouts and light/dark themes.
+- `public/design.css`, `public/room.css`: shared tokens and responsive all-white layouts.
+- `docs/design-notes.md`: design decisions, generated artwork prompt and asset licenses.
 - `server.ts`: page/static routes, per-connection AI session and authenticated sockets.
 
 Implementation follows Firebase's ID-token verification and Google sign-in documentation (https://firebase.google.com/docs/auth/admin/verify-id-tokens, https://firebase.google.com/docs/auth/web/google-signin) and Neon's parameterized serverless driver (https://github.com/neondatabase/serverless).
