@@ -4,325 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Coding Ability Test</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/material-darker.min.css" />
-  <style>
-    :root {
-      --bg-1: #f8f4ec;
-      --bg-2: #efe8dc;
-      --surface: #ffffff;
-      --ink: #171717;
-      --muted: #6a6864;
-      --line: #e6ddcf;
-      --primary: #e56d00;
-      --primary-dark: #c85f00;
-      --ok: #19b97b;
-      --warn: #c77b00;
-      --danger: #d94646;
-      --shadow: 0 24px 56px rgba(0, 0, 0, 0.1);
-      --radius-lg: 20px;
-      --radius-md: 14px;
-    }
-
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
-    body {
-      font-family: "Sora", "Segoe UI", sans-serif;
-      min-height: 100vh;
-      background:
-        radial-gradient(1200px 420px at 15% -10%, #fff8ef 0%, transparent 70%),
-        radial-gradient(900px 360px at 100% 0%, #f1f6ff 0%, transparent 70%),
-        linear-gradient(165deg, var(--bg-1), var(--bg-2));
-      color: var(--ink);
-      padding: 24px;
-      overflow-x: hidden;
-    }
-
-    .layout {
-      max-width: 1260px;
-      margin: 0 auto;
-      display: grid;
-      grid-template-columns: 340px 1fr;
-      gap: 20px;
-      align-items: start;
-    }
-
-    .panel {
-      background: var(--surface);
-      border-radius: var(--radius-lg);
-      border: 1px solid var(--line);
-      box-shadow: var(--shadow);
-      padding: 18px;
-      min-width: 0;
-    }
-
-    .left {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-      align-self: start;
-    }
-
-    .title {
-      font-size: 24px;
-      font-weight: 700;
-      line-height: 1.2;
-      margin-top: 8px;
-    }
-
-    .muted {
-      color: var(--muted);
-      font-size: 13px;
-      line-height: 1.5;
-    }
-
-    .row {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-
-    .status {
-      font-size: 12px;
-      font-weight: 600;
-      border-radius: 999px;
-      padding: 6px 10px;
-      border: 1px solid var(--line);
-      color: var(--muted);
-      background: #f9f5ee;
-    }
-
-    .status.ok {
-      color: var(--ok);
-      border-color: #ccefe1;
-      background: #f3fcf8;
-    }
-
-    .status.warn {
-      color: var(--warn);
-      border-color: #f0ddb7;
-      background: #fff9ef;
-    }
-
-    .label {
-      display: block;
-      font-size: 12px;
-      font-weight: 600;
-      margin-bottom: 6px;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-    }
-
-    .field,
-    select,
-    textarea {
-      width: 100%;
-      border: 1px solid var(--line);
-      border-radius: var(--radius-md);
-      padding: 11px 12px;
-      font-size: 14px;
-      font-family: inherit;
-      outline: none;
-      background: #fff;
-      color: var(--ink);
-      transition: border-color 0.2s ease, box-shadow 0.2s ease;
-    }
-
-    .field:focus,
-    select:focus,
-    textarea:focus {
-      border-color: #d9903a;
-      box-shadow: 0 0 0 3px rgba(229, 109, 0, 0.12);
-    }
-
-    .btn {
-      border: 1px solid transparent;
-      border-radius: 999px;
-      padding: 10px 14px;
-      font-weight: 600;
-      cursor: pointer;
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      transition: transform 0.15s ease, opacity 0.2s ease;
-      font-size: 14px;
-    }
-
-    .btn:hover:not(:disabled) {
-      transform: translateY(-1px);
-    }
-
-    .btn:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-
-    .btn.primary {
-      background: var(--primary);
-      color: #fff;
-      border-color: var(--primary);
-    }
-
-    .btn.primary:hover:not(:disabled) {
-      background: var(--primary-dark);
-      border-color: var(--primary-dark);
-    }
-
-    .btn.soft {
-      background: #f6f1e7;
-      color: #2f2d2a;
-      border-color: var(--line);
-    }
-
-    .btn.danger {
-      background: #fff3f3;
-      color: var(--danger);
-      border-color: #f2d0d0;
-    }
-
-    .right {
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-      min-width: 0;
-    }
-
-    .editor-wrap {
-      display: grid;
-      grid-template-rows: auto auto 1fr;
-      gap: 12px;
-      min-height: 0;
-      min-width: 0;
-      height: clamp(360px, 52vh, 620px);
-    }
-
-    .editor-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-
-    .editor-meta {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    .meta-pill {
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--muted);
-      background: #f7f1e7;
-      border: 1px solid var(--line);
-      border-radius: 999px;
-      padding: 5px 10px;
-    }
-
-    .editor-shell {
-      min-height: 0;
-      height: 100%;
-      border-radius: var(--radius-md);
-      border: 1px solid #2b2b31;
-      overflow: hidden;
-      background: #1e1e1e;
-    }
-
-    #code-editor {
-      width: 100%;
-      min-height: 0;
-      height: 100%;
-      resize: none;
-      font-family: Consolas, "Courier New", monospace;
-      font-size: 13px;
-      line-height: 1.45;
-      background: #0f0f12;
-      color: #f2f2f2;
-      border-color: #2b2b31;
-    }
-
-    .CodeMirror {
-      height: 100%;
-      font-family: Consolas, "Courier New", monospace;
-      font-size: 14px;
-      line-height: 1.6;
-      background: #1e1e1e;
-    }
-
-    .CodeMirror-gutters {
-      border-right: 1px solid #2f2f2f;
-      background: #161616;
-    }
-
-    .CodeMirror-activeline-background {
-      background: rgba(255, 255, 255, 0.04);
-    }
-
-    .sync-text {
-      font-size: 12px;
-      color: var(--muted);
-    }
-
-    .transcript {
-      height: clamp(250px, 34vh, 420px);
-      overflow-y: auto;
-      border: 1px solid var(--line);
-      border-radius: var(--radius-md);
-      background: #fcfaf5;
-      padding: 12px;
-      font-size: 13px;
-      line-height: 1.5;
-      min-width: 0;
-    }
-
-    .line {
-      margin-bottom: 12px;
-    }
-
-    .line .speaker {
-      display: block;
-      font-weight: 700;
-      margin-bottom: 3px;
-    }
-
-    .line .text {
-      display: block;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-
-    @media (max-width: 1040px) {
-      .layout {
-        grid-template-columns: 1fr;
-      }
-
-      .right {
-        gap: 16px;
-      }
-
-      .editor-wrap {
-        height: 420px;
-      }
-
-      .transcript {
-        height: 280px;
-      }
-    }
-  </style>
+  <link rel="stylesheet" href="/assets/design.css">
+  <link rel="stylesheet" href="/assets/room.css">
 </head>
-<body>
+<body class="coding-page">
   <div class="layout">
     <section class="panel left">
       <a href="/" class="btn soft">Back to Interview Page</a>
@@ -359,7 +46,7 @@
         <button id="end-btn" class="btn danger" type="button" disabled>End Session</button>
       </div>
 
-      <p class="muted">Token optimization mode: nothing is sent for review while you type. Say "can you check now" or click Review Now when you want feedback.</p>
+      <p class="muted">Your draft stays local until you ask for review. Say "can you check now" or click Review Now when you want feedback.</p>
     </section>
 
     <section class="right">
@@ -400,7 +87,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/selection/active-line.min.js"></script>
 
-  <script>
+  <script type="module">
+    import { authenticateSocket, beginSession, saveSession } from "/assets/session.js";
     const languageSelect = document.getElementById('language');
     const topicInput = document.getElementById('topic');
     const startBtn = document.getElementById('start-btn');
@@ -866,7 +554,8 @@
       ws = new WebSocket(`${protocol}//${window.location.host}`);
 
       return new Promise((resolve, reject) => {
-        ws.onopen = () => {
+        ws.onopen = async () => {
+          try { await authenticateSocket(ws); } catch (error) { ws.close(); reject(error); return; }
           setConn(true);
           resolve();
         };
@@ -982,6 +671,7 @@
           appendLine('System', 'Browser blocked audio autoplay. Click Start Coding Test once more.');
         }
 
+        await beginSession('coding', `${language} · ${topic}`);
         await ensureSocket();
         ws.send(JSON.stringify({
           type: 'startCodingInterview',
@@ -1006,11 +696,14 @@
           editor.focus();
         }
       } catch (error) {
-        appendLine('System', 'Could not start coding test.');
+        if (ws) ws.close();
+        saveSession('interrupted').catch(() => {});
+        appendLine('System', error.message || 'Could not start coding test.');
       }
     });
 
-    endBtn.addEventListener('click', () => {
+    endBtn.addEventListener('click', async () => {
+      await saveSession('completed').catch(() => {});
       if (ws && ws.readyState === WebSocket.OPEN) {
         ws.close();
       }
