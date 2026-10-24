@@ -40,6 +40,8 @@ History statistics reflect the loaded page(s), not lifetime totals. No AI evalua
 
 ## Vercel
 
+Firebase Admin is kept on its 13.x CommonJS-compatible dependency chain because the 14.x `jwks-rsa`/`jose` chain failed to initialize in the deployed runtime. The `uuid` override selects its patched CommonJS-compatible 11.x release for the older Google client dependencies. Check the strict CommonJS boot and the dependency audit before changing these versions.
+
 Set the Firebase variables, `DATABASE_URL`, and existing `GOOGLE_API_KEY` in the appropriate Vercel environment. Apply the SQL migration before testing sign-in. The existing `vercel.json` includes `public/**` so CSS, scripts, and HTML are available to the exported server.
 
 The branch is for preview testing. Check WebSocket availability and function lifetime on your hosting plan; the existing function duration is 60 seconds. Longer interviews require a supported long-lived WebSocket runtime or a separate persistent Node server. Page rendering alone does not verify live interview support. Real Google sign-in and Neon round-trip tests require your configured services; the local smoke suite intentionally uses no secrets.
