@@ -1,6 +1,58 @@
 import { test, expect } from '@playwright/test';
 import { WebSocket } from 'ws';
 
+// Fixture authentication exercises UI/storage wiring without real cloud credentials.
+const fixtureAuth = `export async function requireUser(){return {uid:'fixture-user'}};
+export async function authenticateSocket(){};
+export async function api(path,options={}){const r=await fetch('/fixture/'+path,options);const data=await r.json();if(!r.ok)throw new Error(data.error);return data;}`;
+
+test('history renders stored transcripts, filters and deletes records', async ({ page }) => {
+  await page.route('**/assets/auth.js', route => route.fulfill({ contentType: 'text/javascript', body: fixtureAuth }));
+  let deleted = false;
+  await page.route('**/fixture/**', async route => {
+    const path = new URL(route.request().url()).pathname;
+    if (route.request().method() === 'DELETE') deleted = true;
+    const data = path.endsWith('/profile') ? {} : path.endsWith('/interviews') ? {
+      interviews: [{ id: 'fixture', mode: 'coding', target: 'Python arrays', status: 'completed', started_at: '2026-10-24T10:00:00Z' }], nextCursor: null
+    } : { target: 'Python arrays', started_at: '2026-10-24T10:00:00Z', transcript: [{ role: 'user', text: 'My answer <script>must stay text</script>' }] };
+    await route.fulfill({ json: data });
+  });
+  await page.goto('/history');
+  await expect(page.getByRole('heading', { name: 'Python arrays' })).toBeVisible();
+  await page.getByRole('button', { name: 'View transcript' }).click();
+  await expect(page.locator('#detail-content')).toContainText('My answer <script>must stay text</script>');
+  expect(await page.locator('#detail-content script').count()).toBe(0);
+  await page.getByRole('button', { name: 'Close', exact: true }).click();
+  await page.selectOption('#history-filter', 'voice');
+  await expect(page.getByRole('heading', { name: 'No matching sessions' })).toBeVisible();
+  await page.selectOption('#history-filter', 'all');
+  page.on('dialog', dialog => dialog.accept());
+  await page.getByRole('button', { name: 'Delete', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Your first practice starts here' })).toBeVisible();
+  expect(deleted).toBeTruthy();
+});
+
+test('session saving serializes transcript updates and completion', async ({ page }) => {
+  await page.route('**/assets/auth.js', route => route.fulfill({ contentType: 'text/javascript', body: fixtureAuth }));
+  const updates: any[] = [];
+  await page.route('**/fixture/interviews**', async route => {
+    if (route.request().method() === 'PATCH') updates.push(route.request().postDataJSON());
+    await route.fulfill({ json: { id: 'fixture' } });
+  });
+  await page.goto('/');
+  await page.evaluate(async () => {
+    const session = await import('/assets/session.js');
+    await session.beginSession('voice', 'Engineer');
+    const row = document.createElement('div');
+    row.innerHTML = '<span class="speaker">You</span><span class="text">A real answer</span>';
+    document.getElementById('transcript')!.append(row);
+    await session.saveSession('active');
+    await session.saveSession('completed');
+  });
+  expect(updates.map(u => u.status)).toEqual(['active', 'completed']);
+  expect(updates[1].transcript).toEqual([{ role: 'user', text: 'A real answer' }]);
+});
+
 test('private APIs reject anonymous requests', async ({ request }) => {
   for (const path of ['profile', 'interviews', 'interviews/not-owned']) {
     const result = await request.get('/api/account/' + path);
