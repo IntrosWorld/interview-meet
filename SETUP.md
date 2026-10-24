@@ -27,7 +27,8 @@ The browser receives only public Firebase web-app settings from `/api/config`. I
 
 ## Pages and behavior
 
-- `/`: voice interview room, role selection, camera, text answers and coding rounds.
+- `/`: public homepage with practice links and reduced-motion-aware animations.
+- `/interview`: voice interview room, role selection, camera, text answers and coding rounds.
 - `/coding`: coding editor, spoken questions and explicit review requests.
 - `/login`: email/password, Google sign-in, password reset.
 - `/signup`: name, email/password and Google sign-up.

@@ -48,7 +48,7 @@ if (location.pathname === '/history') {
     }
     if (!visible.length) {
       const empty = text('section', '', 'empty'); empty.append(text('h2', interviews.length ? 'No matching sessions' : 'Your first practice starts here'), text('p', 'Your interview transcripts will appear here after you start a session.', 'muted'));
-      const start = text('a', 'Try a voice interview', 'button'); start.href = '/'; empty.append(start); list.append(empty);
+      const start = text('a', 'Try a voice interview', 'button'); start.href = '/interview'; empty.append(start); list.append(empty);
     }
   }
   async function load() {

@@ -39,7 +39,7 @@ test('session saving serializes transcript updates and completion', async ({ pag
     if (route.request().method() === 'PATCH') updates.push(route.request().postDataJSON());
     await route.fulfill({ json: { id: 'fixture' } });
   });
-  await page.goto('/');
+  await page.goto('/interview');
   await page.evaluate(async () => {
     const session = await import('/assets/session.js');
     await session.beginSession('voice', 'Engineer');
@@ -89,7 +89,7 @@ for (const size of [{ width: 1440, height: 1000 }, { width: 390, height: 844 }])
     await page.setViewportSize(size);
     const errors: string[] = [];
     page.on('pageerror', e => errors.push(e.message));
-    for (const path of ['/', '/coding', '/login', '/signup', '/history']) {
+    for (const path of ['/', '/interview', '/coding', '/login', '/signup', '/history']) {
       await page.goto(path);
       await expect(page.getByRole('navigation')).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();

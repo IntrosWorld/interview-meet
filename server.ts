@@ -144,6 +144,10 @@ function createApplicationServer() {
   }
 
   app.get('/', async (c) => {
+    return c.html(await readFile(join(process.cwd(), 'public', 'home.html'), 'utf-8'));
+  });
+
+  app.get('/interview', async (c) => {
     const html = await readFile(join(process.cwd(), 'public', 'index.html'), 'utf-8');
     return c.html(html);
   });
