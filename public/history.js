@@ -9,6 +9,7 @@ if (location.pathname === '/history') {
   const detail = document.getElementById('interview-detail');
   let interviews = [], cursor;
   const text = (tag, value, cls) => { const e = document.createElement(tag); e.textContent = value; if (cls) e.className = cls; return e; };
+  const glyph = name => { const e = document.createElement('i'); e.className = 'ph ph-' + name; e.setAttribute('aria-hidden', 'true'); return e; };
   const formatDate = value => new Date(value).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
   async function show(id) {
     const content = document.getElementById('detail-content');
@@ -34,7 +35,9 @@ if (location.pathname === '/history') {
       info.append(text('span', interview.mode === 'voice' ? 'Voice interview' : 'Coding practice', 'badge'), text('h3', interview.target), text('p', formatDate(interview.started_at) + ' · ' + interview.status));
       const actions = text('div', '', 'row-actions');
       const view = text('button', 'View transcript', 'button outline'); view.onclick = () => show(interview.id);
+      view.prepend(glyph('text-align-left'));
       const remove = text('button', 'Delete', 'button outline');
+      remove.prepend(glyph('trash'));
       remove.onclick = async () => {
         if (!confirm('Delete this interview and its transcript?')) return;
         remove.disabled = true;

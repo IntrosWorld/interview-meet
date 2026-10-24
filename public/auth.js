@@ -50,17 +50,29 @@ const nav = document.createElement('nav');
 nav.className = 'app-nav';
 nav.setAttribute('aria-label', 'Main navigation');
 nav.innerHTML = `<a class="wordmark" href="/">Interview Meet<span class="brand-mark">im</span></a>
-  <div class="nav-links"><a href="/">Interview room</a><a href="/coding">Coding practice</a><a href="/history">My interviews</a></div>
-  <div class="nav-account"><button class="theme-toggle" aria-label="Toggle color theme" type="button">◐</button><a href="/login" id="account-link">Log in</a><a class="button small" href="/signup" id="signup-link">Get started</a></div>`;
+  <div class="nav-links"><a href="/"><i class="ph ph-microphone" aria-hidden="true"></i>Interview room</a><a href="/coding"><i class="ph ph-code" aria-hidden="true"></i>Coding practice</a><a href="/history"><i class="ph ph-clock-counter-clockwise" aria-hidden="true"></i>My interviews</a></div>
+  <div class="nav-account"><a href="/login" id="account-link">Log in</a><a class="button small" href="/signup" id="signup-link">Get started <i class="ph ph-arrow-up-right" aria-hidden="true"></i></a></div>`;
 document.body.prepend(nav);
-for (const link of nav.querySelectorAll('.nav-links a')) if (link.pathname === location.pathname) link.setAttribute('aria-current', 'page');
-const storedTheme = localStorage.getItem('theme');
-if (storedTheme) document.documentElement.dataset.theme = storedTheme;
-nav.querySelector('.theme-toggle').onclick = () => {
-  const dark = document.documentElement.dataset.theme === 'dark' || (!document.documentElement.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches);
-  document.documentElement.dataset.theme = dark ? 'light' : 'dark';
-  localStorage.setItem('theme', dark ? 'light' : 'dark');
+const iconMap = {
+  '#startBtn': 'microphone', '#stopBtn': 'stop', '#cameraBtn': 'video-camera',
+  '#send-text-btn': 'arrow-up', '#submit-code-btn': 'paper-plane-tilt',
+  '#start-btn': 'play', '#end-btn': 'stop', '#voice-btn': 'microphone',
+  '#review-now-btn': 'code-block', '#google-signin': 'google-logo',
+  '#auth-submit': 'arrow-right', '#reset-password': 'key',
 };
+function decorateControls() {
+  for (const [selector, icon] of Object.entries(iconMap)) {
+    const control = document.querySelector(selector);
+    if (control && !control.querySelector('.ph')) {
+      const glyph = document.createElement('i'); glyph.className = 'ph ph-' + icon; glyph.setAttribute('aria-hidden', 'true');
+      control.prepend(glyph, document.createTextNode(' '));
+    }
+  }
+}
+decorateControls();
+new MutationObserver(decorateControls).observe(document.body, { childList: true, subtree: true });
+for (const link of nav.querySelectorAll('.nav-links a')) if (link.pathname === location.pathname) link.setAttribute('aria-current', 'page');
+// This redesign intentionally uses a single white theme on every surface.
 ready.then(() => onAuthStateChanged(auth, user => {
   if (!user) return;
   document.getElementById('account-link').textContent = user.displayName || user.email?.split('@')[0] || 'My account';

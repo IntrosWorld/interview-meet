@@ -85,7 +85,7 @@ test('public config contains no server secrets', async ({ request }) => {
 });
 
 for (const size of [{ width: 1440, height: 1000 }, { width: 390, height: 844 }]) {
-  test(`screens and theme work at ${size.width}px`, async ({ page }) => {
+  test(`screens stay white at ${size.width}px including dark system preference`, async ({ page }) => {
     await page.setViewportSize(size);
     const errors: string[] = [];
     page.on('pageerror', e => errors.push(e.message));
@@ -99,9 +99,9 @@ for (const size of [{ width: 1440, height: 1000 }, { width: 390, height: 844 }])
       }
       if (path === '/history') await expect(page.locator('#history-status')).toContainText('Sign-in is not configured');
       await page.screenshot({ path: `test-results/${size.width}-${path.replaceAll('/', '') || 'room'}-light.png`, fullPage: true });
-      await page.getByRole('button', { name: 'Toggle color theme' }).click();
-      await page.screenshot({ path: `test-results/${size.width}-${path.replaceAll('/', '') || 'room'}-dark.png`, fullPage: true });
-      await page.getByRole('button', { name: 'Toggle color theme' }).click();
+      await page.emulateMedia({ colorScheme: 'dark' });
+      expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe('rgb(255, 255, 255)');
+      await page.screenshot({ path: `test-results/${size.width}-${path.replaceAll('/', '') || 'room'}-white.png`, fullPage: true });
     }
     expect(errors).toEqual([]);
   });
