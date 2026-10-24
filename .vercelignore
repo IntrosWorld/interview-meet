@@ -1,0 +1,7 @@
+.env
+.env.*
+.codex-remote-attachments/
+obsidian_ai_interviewer/
+test-results/
+playwright-report/
+tests/
