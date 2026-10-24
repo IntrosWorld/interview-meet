@@ -8,6 +8,8 @@ import { readFile } from 'fs/promises';
 import { createServer } from 'node:http';
 import { join } from 'node:path';
 import dotenv from 'dotenv';
+import { registerAccounts, verifyToken } from './src/accounts.js';
+import { serveStatic } from '@hono/node-server/serve-static';
 
 dotenv.config();
 const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
@@ -21,7 +23,6 @@ export function debug(data: object): string {
 }
 
 function createApplicationServer() {
-  const clients = new Set<WebSocket>();
   const lastCodePayloadBySocket = new WeakMap<WebSocket, string>();
   const latestCodeSnapshotBySocket = new WeakMap<WebSocket, {
     language: string;
@@ -60,6 +61,8 @@ function createApplicationServer() {
     systemInstruction: interviewSystemPrompt,
   };
 
+  // Each connection owns its AI session; user content is never broadcast.
+  function createLiveSession(socket: WebSocket) {
   let sessionPromise: ReturnType<typeof connectGemini> | null = null;
 
   function connectGemini() {
@@ -86,7 +89,7 @@ function createApplicationServer() {
           const transcription = message.serverContent?.outputTranscription?.text;
           if (transcription) {
             console.log('Received output transcription:', transcription);
-            clients.forEach((client) => {
+            [socket].forEach((client) => {
               if (client.readyState === WebSocket.OPEN) {
                 client.send(JSON.stringify({type: 'textStream', data: transcription}));
               }
@@ -96,7 +99,7 @@ function createApplicationServer() {
           const parts = message.serverContent?.modelTurn?.parts || [];
           parts.forEach((part) => {
             if (part.inlineData?.data) {
-              clients.forEach((client) => {
+              [socket].forEach((client) => {
                 if (client.readyState === WebSocket.OPEN) {
                   client.send(JSON.stringify({
                     type: 'audioStream',
@@ -128,10 +131,16 @@ function createApplicationServer() {
     }
     return sessionPromise;
   }
+  return { getGeminiSession, close: () => { void sessionPromise?.then(s => s.close()).catch(() => {}); } };
+  }
 
   const app = new Hono();
 
-  app.use('/*', cors());
+  registerAccounts(app);
+  app.use('/assets/*', serveStatic({ root: './public', rewriteRequestPath: p => p.replace('/assets/', '/') }));
+  for (const route of ['/login', '/signup', '/history']) {
+    app.get(route, async (c) => c.html(await readFile(join(process.cwd(), 'public', 'account.html'), 'utf-8')));
+  }
 
   app.get('/', async (c) => {
     const html = await readFile(join(process.cwd(), 'public', 'index.html'), 'utf-8');
@@ -151,11 +160,19 @@ function createApplicationServer() {
 
   wss.on('connection', (socket) => {
     console.log('WebSocket client connected');
-    clients.add(socket);
+    const live = createLiveSession(socket);
+    let authenticated = false;
 
     socket.on('message', async (data) => {
       try {
         const message = JSON.parse(data.toString());
+        if (message.type === 'authenticate') {
+          await verifyToken(String(message.token || ''));
+          authenticated = true;
+          socket.send(JSON.stringify({ type: 'authenticated' }));
+          return;
+        }
+        if (!authenticated) throw new Error('Sign in before starting an interview');
 
         if (message.type === 'codeSnapshot') {
           const language = String(message.language || '').trim();
@@ -167,7 +184,7 @@ function createApplicationServer() {
           return;
         }
 
-        const session = await getGeminiSession();
+        const session = await live.getGeminiSession();
 
         if (message.type === 'startInterview') {
           const interviewTarget = String(message.interviewTarget || '').trim();
@@ -345,12 +362,12 @@ function createApplicationServer() {
 
     socket.on('close', () => {
       console.log('WebSocket client disconnected');
-      clients.delete(socket);
+      live.close();
     });
 
     socket.on('error', (error) => {
       console.error('WebSocket error:', error);
-      clients.delete(socket);
+      live.close();
     });
   });
 
