@@ -13,6 +13,7 @@ function turns() {
 }
 export async function beginSession(mode, target) {
   await requireUser();
+  await saving.catch(() => {});
   const result = await api('interviews', { method: 'POST', body: JSON.stringify({ mode, target }) });
   id = result.id; stopped = false; transcript.replaceChildren(); notice.textContent = 'Interview history is saved to your account.';
 }

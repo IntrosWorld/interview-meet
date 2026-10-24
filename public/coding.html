@@ -562,6 +562,10 @@
 
         ws.onclose = () => {
           setConn(false);
+          if (started) saveSession('interrupted').catch(() => {});
+          languageSelect.disabled = false;
+          topicInput.disabled = false;
+          resetState();
         };
 
         ws.onerror = () => {
@@ -577,6 +581,8 @@
               playAudioQueue();
             } else if (message.type === 'textStream') {
               appendGemini(message.data);
+            } else if (message.type === 'userTranscript') {
+              appendLine('You', message.data);
             } else if (message.type === 'error') {
               appendLine('System', message.message || 'Server error');
             }
@@ -611,6 +617,7 @@
         requestReview: true,
         codeChanged: changed,
       }));
+      appendLine('You (code)', changed ? code : 'Requested another review of the same draft.');
 
       setSync(changed ? 'Review requested' : 'Follow-up review requested', 'ok');
       editorNote.textContent = changed
@@ -659,6 +666,7 @@
     topicInput.addEventListener('input', updateStartAvailability);
 
     startBtn.addEventListener('click', async () => {
+      startBtn.disabled = true;
       const language = languageSelect.value;
       const topic = topicInput.value.trim();
       if (!language || !topic) {
@@ -666,6 +674,7 @@
       }
 
       try {
+        geminiLine = null;
         const audioReady = await ensureAudioContextUnlocked();
         if (!audioReady) {
           appendLine('System', 'Browser blocked audio autoplay. Click Start Coding Test once more.');
@@ -696,6 +705,7 @@
           editor.focus();
         }
       } catch (error) {
+        updateStartAvailability();
         if (ws) ws.close();
         saveSession('interrupted').catch(() => {});
         appendLine('System', error.message || 'Could not start coding test.');

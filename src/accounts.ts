@@ -3,6 +3,7 @@ import { getAuth, type DecodedIdToken } from 'firebase-admin/auth';
 import { neon } from '@neondatabase/serverless';
 import type { Hono } from 'hono';
 import { randomUUID } from 'node:crypto';
+import { bodyLimit } from 'hono/body-limit';
 
 export async function verifyToken(token: string): Promise<DecodedIdToken> {
   if (!process.env.FIREBASE_PROJECT_ID) throw new Error('Authentication is not configured');
@@ -21,6 +22,7 @@ function database() {
 }
 
 export function registerAccounts(app: Hono) {
+  app.use('/api/account/*', bodyLimit({ maxSize: 600000, onError: c => c.json({ error: 'Request is too large' }, 413) }));
   app.get('/api/config', (c) => c.json({
     firebase: { apiKey: process.env.FIREBASE_WEB_API_KEY, authDomain: process.env.FIREBASE_AUTH_DOMAIN,
       projectId: process.env.FIREBASE_PROJECT_ID, appId: process.env.FIREBASE_APP_ID },

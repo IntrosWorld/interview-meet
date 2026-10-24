@@ -1,6 +1,5 @@
 import { getRequestListener } from '@hono/node-server';
 import { Hono } from 'hono';
-import { cors } from 'hono/cors';
 import { GoogleGenAI, Modality } from '@google/genai';
 import * as types from '@google/genai';
 import { WebSocketServer, WebSocket } from 'ws';
@@ -51,6 +50,7 @@ function createApplicationServer() {
       Modality.AUDIO,
     ],
     outputAudioTranscription: {},
+    inputAudioTranscription: {},
     speechConfig: {
       voiceConfig: {
         prebuiltVoiceConfig: {
@@ -84,11 +84,12 @@ function createApplicationServer() {
           console.log('✅ Live Session Opened Successfully');
         },
         onmessage: (message: types.LiveServerMessage) => {
-          console.log('📥 Received message from Gemini:', debug(message));
+          // Do not log candidate audio, code, or transcript content.
+          const input = message.serverContent?.inputTranscription?.text;
+          if (input && socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: 'userTranscript', data: input }));
 
           const transcription = message.serverContent?.outputTranscription?.text;
           if (transcription) {
-            console.log('Received output transcription:', transcription);
             [socket].forEach((client) => {
               if (client.readyState === WebSocket.OPEN) {
                 client.send(JSON.stringify({type: 'textStream', data: transcription}));
@@ -156,12 +157,13 @@ function createApplicationServer() {
   // also includes HTTP/2 servers, but `ws` can only attach to HTTP/1/HTTPS.
   const server = createServer(getRequestListener(app.fetch));
 
-  const wss = new WebSocketServer({ server });
+  const wss = new WebSocketServer({ server, maxPayload: 1024 * 1024 });
 
   wss.on('connection', (socket) => {
     console.log('WebSocket client connected');
     const live = createLiveSession(socket);
     let authenticated = false;
+    const authTimeout = setTimeout(() => { if (!authenticated) socket.close(1008, 'Sign in required'); }, 15000);
 
     socket.on('message', async (data) => {
       try {
@@ -169,6 +171,7 @@ function createApplicationServer() {
         if (message.type === 'authenticate') {
           await verifyToken(String(message.token || ''));
           authenticated = true;
+          clearTimeout(authTimeout);
           socket.send(JSON.stringify({ type: 'authenticated' }));
           return;
         }
@@ -361,6 +364,7 @@ function createApplicationServer() {
     });
 
     socket.on('close', () => {
+      clearTimeout(authTimeout);
       console.log('WebSocket client disconnected');
       live.close();
     });

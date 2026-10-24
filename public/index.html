@@ -383,6 +383,8 @@
               }
             } else if (message.type === 'textStream') {
               appendGeminiText(message.data);
+            } else if (message.type === 'userTranscript') {
+              appendTranscriptLine('You', message.data);
             } else if (message.type === 'error') {
               appendTranscriptLine('System', message.message || 'Server error');
             }
@@ -398,6 +400,9 @@
 
         ws.onclose = () => {
           setConnectionStatus(false);
+          if (interviewStarted) saveSession('interrupted').catch(() => {});
+          stopRecording();
+          resetSessionState();
         };
       });
     }
@@ -442,6 +447,7 @@
         setUserSpeaking(false);
       } catch (error) {
         appendTranscriptLine('System', `Microphone error: ${error.message}`);
+        throw error;
       }
     }
 
@@ -452,6 +458,7 @@
         processor = null;
       }
       if (microphone) {
+        microphone.mediaStream.getTracks().forEach(track => track.stop());
         microphone.disconnect();
         microphone = null;
       }
@@ -606,6 +613,7 @@
     });
 
     startBtn.addEventListener('click', async () => {
+      startBtn.disabled = true;
       const target = interviewTargetInput.value.trim();
       if (!target) {
         appendTranscriptLine('System', 'Set interview target first.');
@@ -632,6 +640,8 @@
         startBtn.disabled = true;
         stopBtn.disabled = false;
       } catch (error) {
+        stopRecording();
+        resetSessionState();
         if (ws) ws.close();
         saveSession('interrupted').catch(() => {});
         appendTranscriptLine('System', error.message || 'Failed to start interview session.');
