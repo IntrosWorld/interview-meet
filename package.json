@@ -1,7 +1,7 @@
 {
-  "name": "gemini-live-agent-demo",
+  "name": "interview-meet",
   "version": "1.0.0",
-  "description": "Gemini Live Agent Demo converted to Node.js",
+  "description": "Interview Meet - voice and coding interview practice",
   "main": "server.ts",
   "scripts": {
     "assets": "node scripts/sync-assets.mjs",

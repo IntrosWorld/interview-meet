@@ -49,8 +49,8 @@ export async function authenticateSocket(socket) {
 const nav = document.createElement('nav');
 nav.className = 'app-nav';
 nav.setAttribute('aria-label', 'Main navigation');
-nav.innerHTML = `<a class="wordmark" href="/">Interview Meet<span class="brand-mark">im</span></a>
-  <div class="nav-links"><a href="/"><i class="ph ph-microphone" aria-hidden="true"></i>Interview room</a><a href="/coding"><i class="ph ph-code" aria-hidden="true"></i>Coding practice</a><a href="/history"><i class="ph ph-clock-counter-clockwise" aria-hidden="true"></i>My interviews</a></div>
+nav.innerHTML = `<a class="wordmark" href="/">Interview Meet<img class="brand-mark" src="/assets/images/interview-meet-logo.png" width="34" height="34" alt=""></a>
+  <div class="nav-links"><a href="/interview"><i class="ph ph-microphone" aria-hidden="true"></i>Interview room</a><a href="/coding"><i class="ph ph-code" aria-hidden="true"></i>Coding practice</a><a href="/history"><i class="ph ph-clock-counter-clockwise" aria-hidden="true"></i>My interviews</a></div>
   <div class="nav-account"><a href="/login" id="account-link">Log in</a><a class="button small" href="/signup" id="signup-link">Get started <i class="ph ph-arrow-up-right" aria-hidden="true"></i></a></div>`;
 document.body.prepend(nav);
 const iconMap = {
@@ -96,7 +96,7 @@ if (form) {
   document.getElementById('auth-switch').innerHTML = signup ? 'Already have an account? <a href="/login">Log in</a>' : 'New to Interview Meet? <a href="/signup">Create an account</a>';
   document.getElementById('reset-password').hidden = signup;
   const status = document.getElementById('auth-status');
-  const destination = () => { const next = new URLSearchParams(location.search).get('next'); return ['/', '/coding', '/history'].includes(next) ? next : '/history'; };
+  const destination = () => { const next = new URLSearchParams(location.search).get('next'); return ['/', '/interview', '/coding', '/history'].includes(next) ? next : '/history'; };
   const messages = { 'auth/invalid-credential': 'Email or password is incorrect.', 'auth/email-already-in-use': 'This email already has an account. Try logging in.', 'auth/popup-closed-by-user': 'Sign-in was cancelled. You can try again.', 'auth/weak-password': 'Use a password with at least 8 characters.', 'auth/too-many-requests': 'Too many attempts. Please wait and try again.', 'auth/unauthorized-domain': 'This domain needs to be added to Firebase authorized domains.' };
   const run = async action => {
     const buttons = [...form.querySelectorAll('button'), document.getElementById('google-signin')];

@@ -18,4 +18,11 @@ Final prompt:
 
 ## Third-party assets
 
+## App logo
+
+The repository was renamed to `IntrosWorld/interview-meet`. The generated app logo is saved at `public/images/interview-meet-logo.png` and used for navigation and favicons. Generated with the built-in image tool using this prompt:
+
+> Use case: logo-brand. Asset type: actual square app logo for Interview Meet, a premium interview practice web app. Design one refined black-on-white symbol only, no wordmark and no lettering. A single bold geometric mark combining two opposing speech forms into a subtle continuous interlocking shape, with the negative space between suggesting a microphone or conversation. Extremely clean professional brand identity, flat vector-like design, optically balanced, thick enough to remain recognizable at 24 pixels, rounded but precise geometry. Solid charcoal black symbol, plain pure white square background, symbol occupies about 75 percent of square with clear margins. No gradients, no shadows, no 3D, no silver, no mockup, no presentation board, no extra small elements, no text, no watermark. Must feel ownable, polished and confident, suitable for browser favicon and navigation logo.
+
+
 `npm run assets` copies the official Geist Latin variable font and Phosphor regular icon font/styles from installed npm packages into `public/vendor`. Their licenses are included alongside the copied assets. These are served locally; no icon or font CDN is required. Firebase's browser SDK and the existing CodeMirror editor are still fetched from their upstream CDNs.
