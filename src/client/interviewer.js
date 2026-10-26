@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { sampleViseme } from './audio-visemes.js';
 
 const host = document.getElementById('avatar-stage');
 const state = document.getElementById('avatar-state');
@@ -28,7 +29,8 @@ async function initialize() {
   const rim = new THREE.DirectionalLight(0xffc68d,2); rim.position.set(.8,2.4,-.7); scene.add(rim);
   const ambient = new THREE.HemisphereLight(0xe8eef7,0x292c34,.35); scene.add(ambient);
   const loader = new GLTFLoader();
-  const [person,studio] = await Promise.all([loader.loadAsync('/assets/models/interviewer.glb'),loader.loadAsync('/assets/models/interviewer-studio.glb')]);
+  const config=await fetch('/api/avatar').then(r=>r.ok?r.json():{}).catch(()=>({}));
+  const [person,studio] = await Promise.all([loader.loadAsync(config.character||'/assets/models/interviewer.glb'),loader.loadAsync('/assets/models/interviewer-studio.glb')]);
   const faceMeshes=[], rest=new Map(); let head, neck;
   person.scene.traverse(o => {
     if (o.isMesh) {
@@ -43,8 +45,10 @@ async function initialize() {
   for(const bone of [head,neck]) if(bone) rest.set(bone,bone.quaternion.clone());
   studio.scene.traverse(o=>{if(o.isMesh) o.receiveShadow=true;});
   scene.add(studio.scene,person.scene);
+  await renderer.compileAsync(scene,camera);
   host.dataset.ready='true'; state.textContent='Ready';
   let phrase='', phraseStart=0, rate=14, speaking=false, boundaryStart=0, boundaryIndex=0, nextBlink=2.4, blinkStart=-10, time=0, frame, last=performance.now(), motion=true;
+  let audioTimelines=[];
   const reduced=matchMedia('(prefers-reduced-motion: reduce)');
   const debug={ready:true, speaking:false, frames:0, jaw:0, morphMeshes:faceMeshes.length, drawCalls:0};
   host.avatarDiagnostics=debug;
@@ -56,9 +60,10 @@ async function initialize() {
   }
   function speech(event) {
     const d=event.detail;
+    if(d.type==='audio'){audioTimelines.push(d);state.textContent='Speaking · audio-timed';return;}
     if(d.type==='start') { phrase=d.text; phraseStart=time; boundaryStart=time; boundaryIndex=0; rate=14*(d.rate||1); speaking=true; state.textContent='Speaking'; }
     if(d.type==='boundary') { boundaryIndex=d.charIndex; boundaryStart=time; }
-    if(d.type==='end'||d.type==='cancel') { speaking=false; state.textContent='Ready'; }
+    if(d.type==='end'||d.type==='cancel') { speaking=false; audioTimelines=[];state.textContent='Ready'; }
   }
   window.addEventListener('interviewer:speech',speech);
   function resize() { const w=host.clientWidth,h=host.clientHeight; renderer.setSize(w,h); camera.aspect=w/h; camera.updateProjectionMatrix(); }
@@ -71,18 +76,24 @@ async function initialize() {
     if(time>nextBlink) { blinkStart=time; nextBlink=time+3+Math.random()*3; }
     const phase=(time-blinkStart)/.18, blink=phase>=0&&phase<1?Math.sin(phase*Math.PI):0;
     morph('eyeBlinkLeft',motion&&!reduced.matches?blink:0,.7); morph('eyeBlinkRight',motion&&!reduced.matches?blink:0,.7);
+    audioTimelines=audioTimelines.filter(t=>t.context.currentTime<t.start+t.duration+.05);
+    const audio=audioTimelines.find(t=>t.context.currentTime>=t.start&&t.context.currentTime<t.start+t.duration);
+    const precise=audio?sampleViseme(audio,audio.context.currentTime-audio.start):null;
+    if(audioTimelines.length)speaking=Boolean(audio);
     const index=Math.min(phrase.length-1,boundaryIndex+Math.floor((time-boundaryStart)*rate));
     const letter=speaking?(phrase[index]||' ').toLowerCase():' ';
     const vowel=/[aeiouy]/.test(letter), closed=/[bmp]/.test(letter), round=/[ou]/.test(letter);
     const pulse=.65+.35*Math.sin((time-phraseStart)*27);
-    const jaw=speaking&&!closed&&letter.trim()? (vowel?.24:.1)*pulse:0;
-    morph('jawOpen',jaw,.4); morph('viseme_aa',speaking&&vowel&&!round?.4*pulse:0,.4);
-    morph('viseme_O',speaking&&round?.35:0,.4); morph('viseme_PP',speaking&&closed?.5:0,.4);
-    morph('viseme_FF',speaking&&/[fv]/.test(letter)?.25:0,.4);
+    const jaw=precise?(precise.shape==='aa'?.18:precise.shape==='sil'||precise.shape==='PP'?0:.06)*precise.weight:speaking&&!closed&&letter.trim()? (vowel?.24:.1)*pulse:0;
+    morph('jawOpen',jaw,.65);
+    for(const shape of ['aa','E','I','O','U','PP','FF','TH','DD','kk','CH','SS','nn','RR']) {
+      const estimated=shape==='aa'&&speaking&&vowel&&!round?.4*pulse:shape==='O'&&speaking&&round?.35:shape==='PP'&&speaking&&closed?.5:shape==='FF'&&speaking&&/[fv]/.test(letter)?.25:0;
+      morph('viseme_'+shape,precise?(precise.shape===shape?precise.weight*.7:0):estimated,.65);
+    }
     morph('mouthSmileLeft',.02); morph('mouthSmileRight',.02);
     if(head) { head.quaternion.copy(rest.get(head)); if(motion&&!reduced.matches) head.rotateY(Math.sin(time*.54)*.018).rotateX(Math.sin(time*.73)*.009+(speaking?Math.sin(time*2.4)*.007:0)); }
     if(neck) { neck.quaternion.copy(rest.get(neck)); if(motion&&!reduced.matches) neck.rotateZ(Math.sin(time*.36)*.006); }
-    renderer.render(scene,camera); Object.assign(debug,{speaking,jaw,frames:debug.frames+1,drawCalls:renderer.info.render.calls});
+    renderer.render(scene,camera); Object.assign(debug,{speaking,jaw,frames:debug.frames+1,drawCalls:renderer.info.render.calls,timingMode:audio?'audio-clock':'estimated',viseme:precise?.shape||null});
   }
   frame=requestAnimationFrame(animate);
   window.addEventListener('pagehide',()=>{

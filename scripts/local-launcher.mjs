@@ -6,6 +6,9 @@ const env = { ...process.env, LOCAL_MODEL_DIR: process.env.LOCAL_MODEL_DIR || 'F
 if (!/^F:[/\\]/i.test(env.LOCAL_MODEL_DIR)) throw new Error('Keep LOCAL_MODEL_DIR on F:');
 const python = spawn(process.env.LOCAL_PYTHON || 'python', ['scripts/local-speech.py'], { env, stdio: 'inherit', windowsHide: true });
 children.push(python);
+const tts = spawn(process.env.LOCAL_PYTHON || 'python', ['scripts/local-tts.py'], { env, stdio: 'inherit', windowsHide: true });
+children.push(tts);
+tts.on('error', () => console.error('Timed speech unavailable. Check the local Python runtime.'));
 python.on('error', () => console.error('Python unavailable. Typed chat still works. Set LOCAL_PYTHON to a Python with faster-whisper installed.'));
 const node = spawn(process.execPath, [require.resolve('tsx/cli'), 'src/local-server.ts'], { env, stdio: 'inherit', windowsHide: true });
 children.push(node);

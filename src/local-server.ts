@@ -3,13 +3,14 @@ import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { bodyLimit } from 'hono/body-limit';
 import { stream } from 'hono/streaming';
-import { readFile } from 'node:fs/promises';
+import { readFile, access } from 'node:fs/promises';
 import { join } from 'node:path';
 import { localOptions, localPrompt } from './local-options.js';
 
 const app = new Hono();
 const ollama = process.env.OLLAMA_URL || 'http://127.0.0.1:11434';
 const speech = process.env.LOCAL_SPEECH_URL || 'http://127.0.0.1:8766';
+const tts = process.env.LOCAL_TTS_URL || 'http://127.0.0.1:8767';
 const port = Number(process.env.LOCAL_PORT || 8010);
 const defaultModel = process.env.LOCAL_MODEL || 'qwen3:0.6b';
 app.use('/api/*', bodyLimit({ maxSize: 8 * 1024 * 1024 }));
@@ -22,14 +23,33 @@ app.use('/api/*', async (c, next) => {
   await next();
 });
 app.get('/', async c => c.html(await readFile(join(process.cwd(), 'public', 'local.html'), 'utf8')));
+app.get('/api/avatar',async c=>{
+  try{await access('F:/AI_models/interview-meet/aaa/interviewer-aaa.glb');return c.json({character:'/assets/aaa/character.glb',license:'Local non-commercial evaluation asset'});}
+  catch{return c.json({character:'/assets/models/interviewer.glb',license:'CC0 fallback'});}
+});
+app.get('/assets/aaa/character.glb',async c=>{
+  try{c.header('Content-Type','model/gltf-binary');return c.body(await readFile('F:/AI_models/interview-meet/aaa/interviewer-aaa.glb'));}
+  catch{return c.notFound();}
+});
 app.use('/assets/*', serveStatic({ root: './public', rewriteRequestPath: p => p.replace('/assets/', '/') }));
 app.get('/api/status', async c => {
-  const [models, stt] = await Promise.allSettled([
+  const [models, stt, timed] = await Promise.allSettled([
     fetch(ollama + '/api/tags', { signal: AbortSignal.timeout(4000) }).then(async r => { if (!r.ok) throw Error(); return r.json(); }),
     fetch(speech + '/health', { signal: AbortSignal.timeout(4000) }).then(async r => { if (!r.ok) throw Error(); return r.json(); }),
+    fetch(tts + '/health', { signal: AbortSignal.timeout(4000) }).then(async r => { if (!r.ok) throw Error(); return r.json(); }),
   ]);
   return c.json({ defaultModel, models: models.status === 'fulfilled' ? models.value.models.map((m: any) => m.name) : [],
-    ollamaReady: models.status === 'fulfilled', speechReady: stt.status === 'fulfilled', speech: stt.status === 'fulfilled' ? stt.value : null });
+    ollamaReady: models.status === 'fulfilled', speechReady: stt.status === 'fulfilled', speech: stt.status === 'fulfilled' ? stt.value : null,
+    timedSpeech: timed.status === 'fulfilled' ? timed.value : null });
+});
+app.post('/api/synthesize', async c => {
+  const body=await c.req.json().catch(()=>null);
+  if(!body || typeof body.text!=='string' || body.text.length>600 || !body.text.trim() || (body.voice!=null && typeof body.voice!=='string')) return c.json({error:'Invalid speech request'},400);
+  try {
+    const r=await fetch(tts+'/synthesize',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(25000)});
+    if(!r.ok) return c.json({error:'Timed speech synthesis failed'},503);
+    return c.json(await r.json());
+  } catch { return c.json({error:'Timed local speech is not running'},503); }
 });
 app.post('/api/transcribe', async c => {
   try {

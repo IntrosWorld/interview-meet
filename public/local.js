@@ -1,9 +1,11 @@
 import { createVoiceQueue } from './local-voice.js';
+import { createTimedVoiceQueue } from './timed-voice.js';
 const $ = id => document.getElementById(id);
 let history = [], active, recorder, media, chunks = [], recordingTimer;
 let busy = false, whisperReady = false, captureBusy = false, warming = false, speechBusy = false;
 let prepared = '', handsFree = false, discarded = false, analyserContext, vadFrame, resumeTimer;
 let timing = {}, modelMetrics = '';
+let timedVoices = [], timedSpeechReady = false;
 let lastVoiceAt = 0, preview, snapshotRequested = false;
 const status = text => $('status').textContent = text;
 const headers = { 'Content-Type': 'application/json', 'X-Local-Lab': '1' };
@@ -12,6 +14,7 @@ function controls() {
   $('new-chat').disabled = busy || captureBusy || handsFree;
   $('target').disabled = busy || captureBusy || warming || handsFree;
   $('model').disabled = busy || captureBusy || warming || handsFree;
+  $('voice').disabled = busy || captureBusy || speechBusy || handsFree;
   $('automatic').disabled = handsFree || captureBusy || busy;
   $('cancel').hidden = !busy && !speechBusy;
   $('record').disabled = !handsFree && (busy || warming || !whisperReady || (captureBusy && recorder?.state !== 'recording'));
@@ -28,6 +31,7 @@ function voices() {
   const selected = $('voice').value;
   $('voice').replaceChildren(new Option('Voice output off', ''));
   for (const voice of window.speechSynthesis?.getVoices().filter(v => v.localService) || []) $('voice').add(new Option(voice.name, voice.voiceURI));
+  for (const voice of timedVoices) $('voice').add(new Option(voice.name+' · timed WAV', 'timed:'+voice.name));
   $('voice').value = selected;
   if (!$('voice').value && selected) status('Your selected local voice is no longer available. Voice output is off.');
 }
@@ -40,6 +44,14 @@ const voiceQueue = createVoiceQueue(window.speechSynthesis,
   () => window.speechSynthesis?.getVoices().find(v => v.localService && v.voiceURI === $('voice').value),
   () => { if (timing.pauseAt) { timing.spokenMs = Math.round(performance.now() - timing.pauseAt); showTiming(); } },
   playing => { speechBusy = playing; controls(); maybeListen(); });
+const timedQueue=createTimedVoiceQueue(
+  ()=>$('voice').value.startsWith('timed:')?$('voice').value.slice(6):null,
+  ()=>{if(timing.pauseAt){timing.spokenMs=Math.round(performance.now()-timing.pauseAt);showTiming();}},
+  playing=>{speechBusy=playing;controls();maybeListen();},
+  message=>{handsFree=false;status(message);controls();}
+);
+function cancelVoice(){voiceQueue.cancel();timedQueue.cancel();}
+function outputVoice(){return $('voice').value.startsWith('timed:')?timedQueue:voiceQueue;}
 async function prepare() {
   const key = $('model').value + ':' + $('target').value;
   if (!$('model').value || prepared === key || busy || captureBusy || handsFree || warming) return;
@@ -58,6 +70,8 @@ async function health() {
     for (const model of data.models) $('model').add(new Option(model, model));
     $('model').value = data.models.includes(selected) ? selected : data.models.includes(data.defaultModel) ? data.defaultModel : data.models.includes('qwen3:1.7b') ? 'qwen3:1.7b' : data.models[0] || '';
     whisperReady = data.speechReady;
+    timedSpeechReady = Boolean(data.timedSpeech?.ready);
+    timedVoices = data.timedSpeech?.voices || []; voices();
     $('health').textContent = `Ollama: ${data.ollamaReady ? 'ready' : 'not running'}. Whisper: ${data.speechReady ? data.speech.model + ' ready' : 'starting or unavailable'}.`;
   } catch { $('health').textContent = 'Cannot reach local services. Start npm run local and check again.'; }
   controls();
@@ -66,7 +80,7 @@ async function health() {
 async function send(text) {
   if (busy || !text.trim()) return;
   if (!$('model').value) return status('Start Ollama and install a model, then click Check again.');
-  busy = true; controls(); voiceQueue.cancel(); active = new AbortController();
+  busy = true; controls(); cancelVoice(); active = new AbortController();
   const turn = { role: 'user', content: text.trim() }; history.push(turn); add('user', turn.content); $('message').value = '';
   const reply = add('assistant'); let answer = '', done = false;
   status('Generating locally… The first reply may take longer while the model loads.');
@@ -79,21 +93,21 @@ async function send(text) {
       while ((end = buffer.indexOf('\n')) >= 0) {
         const line = buffer.slice(0, end); buffer = buffer.slice(end + 1); if (!line) continue;
         const data = JSON.parse(line); if (data.error) throw Error(data.error);
-        if (data.text) { answer += data.text; reply.textContent = answer; voiceQueue.push(data.text); $('messages').scrollTop = $('messages').scrollHeight; }
+        if (data.text) { answer += data.text; reply.textContent = answer; outputVoice().push(data.text); $('messages').scrollTop = $('messages').scrollHeight; }
         if (data.done) { done = true; modelMetrics = `First token: ${data.firstTokenMs} ms | Generation: ${data.tokensPerSecond ?? '?'} tokens/sec`; showTiming(); }
       }
     }
     if (!done) throw Error('The model stream ended early. Please try again.');
-    voiceQueue.push('', true); history.push({ role: 'assistant', content: answer }); status(handsFree && speechBusy ? 'Speaking. I will listen again when the reply ends.' : 'Ready for your next answer.');
+    outputVoice().push('', true); history.push({ role: 'assistant', content: answer }); status(handsFree && speechBusy ? 'Speaking. I will listen again when the reply ends.' : 'Ready for your next answer.');
   } catch (error) {
-    handsFree = false; voiceQueue.cancel();
+    handsFree = false; cancelVoice();
     if (answer) history.push({ role: 'assistant', content: answer }); else { history.pop(); reply.textContent = 'No reply generated.'; }
     status(error.name === 'AbortError' ? 'Interrupted. You can send another message.' : error.message);
   } finally { busy = false; active = null; controls(); maybeListen(); }
 }
 $('chat-form').onsubmit = event => { event.preventDefault(); timing = {}; modelMetrics = ''; send($('message').value); };
 $('cancel').onclick = () => { endConversation(); status('Interrupted. You can start listening again or type.'); };
-$('new-chat').onclick = () => { history = []; $('messages').replaceChildren(); $('metrics').textContent = ''; voiceQueue.cancel(); status('New conversation. Say hello to begin.'); };
+$('new-chat').onclick = () => { history = []; $('messages').replaceChildren(); $('metrics').textContent = ''; cancelVoice(); status('New conversation. Say hello to begin.'); };
 $('model').onchange = () => { history = []; $('messages').replaceChildren(); prepare(); };
 $('target').onchange = prepare;
 $('automatic').onchange = controls;
@@ -106,7 +120,7 @@ function stopVad() { cancelAnimationFrame(vadFrame); analyserContext?.close().ca
 function endConversation() {
   handsFree = false; discarded = true; clearTimeout(resumeTimer); clearTimeout(recordingTimer); stopVad();
   if (recorder?.state === 'recording') recorder.stop();
-  media?.getTracks().forEach(t => t.stop()); active?.abort(); voiceQueue.cancel(); controls();
+  media?.getTracks().forEach(t => t.stop()); active?.abort(); cancelVoice(); controls();
 }
 function maybeListen() {
   clearTimeout(resumeTimer);
@@ -136,7 +150,7 @@ function detectPause(stream) {
 }
 async function startRecording() {
   if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) return status('Recording is unavailable in this browser. Typed chat still works.');
-  voiceQueue.cancel(); captureBusy = true; discarded = false; timing = {}; modelMetrics = ''; preview = null; lastVoiceAt = 0; snapshotRequested = false; controls();
+  cancelVoice(); captureBusy = true; discarded = false; timing = {}; modelMetrics = ''; preview = null; lastVoiceAt = 0; snapshotRequested = false; controls();
   try {
     media = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true }, video: false });
     chunks = []; recorder = new MediaRecorder(media);
@@ -180,7 +194,7 @@ $('record').onclick = () => {
   if (recorder?.state === 'recording') { recorder.stop(); return; }
   if ($('automatic').checked) {
     const localVoices = window.speechSynthesis?.getVoices().filter(v => v.localService) || [];
-    if (!$('voice').value) $('voice').value = (localVoices.find(v => v.lang.startsWith('en')) || localVoices[0])?.voiceURI || '';
+    if (!$('voice').value) $('voice').value = timedSpeechReady && timedVoices.length ? 'timed:'+timedVoices[0].name : (localVoices.find(v => v.lang.startsWith('en')) || localVoices[0])?.voiceURI || '';
     if (!$('voice').value) return status('Choose an installed local voice for hands-free conversation, or turn Hands-free off for typed replies.');
     handsFree = true;
   }
