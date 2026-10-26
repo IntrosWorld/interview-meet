@@ -4,6 +4,11 @@
   "description": "Interview Meet - voice and coding interview practice",
   "main": "server.ts",
   "scripts": {
+    "local": "node scripts/local-launcher.mjs",
+    "local:server": "tsx src/local-server.ts",
+    "local:bench": "node scripts/benchmark-local.mjs",
+    "local:test": "playwright test -c playwright.local.config.ts",
+    "local:typecheck": "tsc --noEmit --types node --target ES2022 --module NodeNext --moduleResolution NodeNext --esModuleInterop --skipLibCheck src/local-server.ts",
     "assets": "node scripts/sync-assets.mjs",
     "test": "playwright test",
     "start": "tsx server.ts",
