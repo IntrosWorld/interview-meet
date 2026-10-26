@@ -48,3 +48,58 @@ test('fits a phone without a cloud login', async ({ page }) => {
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
   await page.screenshot({ path: 'test-results/local-mobile.png', fullPage: true });
 });
+
+test('hands-free detects a pause, speaks early, resumes listening, and stops cleanly', async ({ page }) => {
+  await page.addInitScript(() => {
+    const w = window as any; w.voiceStarts = 0; w.listens = 0;
+    w.SpeechSynthesisUtterance = class { constructor(public text: string) {} };
+    Object.defineProperty(window, 'speechSynthesis', { value: {
+      getVoices: () => [{ voiceURI: 'test-local', name: 'Test local voice', lang: 'en-US', localService: true }],
+      addEventListener() {}, cancel() {}, speak(u: any) { w.voiceStarts++; setTimeout(() => u.onstart?.(), 5); setTimeout(() => u.onend?.(), 80); }
+    } });
+    Object.defineProperty(navigator, 'mediaDevices', { value: { getUserMedia: async () => {
+      w.listens++; return { getTracks: () => [{ stop() {} }] };
+    } } });
+    w.MediaRecorder = class {
+      state = 'inactive'; mimeType = 'audio/wav'; ondataavailable: any; onstop: any;
+      start() { this.state = 'recording'; }
+      stop() { this.state = 'inactive'; this.ondataavailable?.({ data: new Blob(['test audio']) }); queueMicrotask(() => this.onstop?.()); }
+    };
+    w.AudioContext = class {
+      born = performance.now();
+      createMediaStreamSource() { return { connect() {} }; }
+      createAnalyser() { let frames = 0; return { fftSize: 2048, getFloatTimeDomainData(a: Float32Array) { a.fill(frames++ < 25 ? .1 : 0); } }; }
+      close() { return Promise.resolve(); }
+    };
+  });
+  await page.route('**/api/status', route => route.fulfill({ json: { defaultModel: 'qwen3:1.7b', models: ['qwen3:1.7b'], ollamaReady: true, speechReady: true, speech: { model: 'tiny.en' } } }));
+  await page.route('**/api/transcribe', route => route.fulfill({ json: { text: 'I built an API', transcriptionMs: 25 } }));
+  await page.goto('/');
+  await expect(page.getByRole('button', { name: 'Start conversation', exact: true })).toBeEnabled();
+  await page.getByRole('button', { name: 'Start conversation', exact: true }).click();
+  await expect(page.locator('#messages')).toContainText('You said: I built an API');
+  await expect.poll(() => page.evaluate(() => (window as any).voiceStarts)).toBeGreaterThan(0);
+  await expect(page.locator('#metrics')).toContainText('First spoken audio after pause');
+  await expect.poll(() => page.evaluate(() => (window as any).listens)).toBeGreaterThan(1);
+  await page.getByRole('button', { name: 'End conversation', exact: true }).click();
+  await expect(page.locator('#status')).toHaveText('Conversation ended. Microphone off.');
+  await expect(page.getByRole('button', { name: 'Start conversation', exact: true })).toBeEnabled();
+});
+
+test('voice output queues the first phrase before sentence completion', async ({ page }) => {
+  await page.goto('/');
+  const result = await page.evaluate(async () => {
+    (window as any).SpeechSynthesisUtterance = class { constructor(public text: string) {} };
+    const { createVoiceQueue } = await import('/assets/local-voice.js');
+    const queued: string[] = [];
+    const synth = { speak: (u: SpeechSynthesisUtterance) => queued.push(u.text), cancel() {} };
+    const voice = { localService: true };
+    const queue = createVoiceQueue(synth, () => voice, () => {});
+    queue.push('What did you learn ');
+    const early = queued.length;
+    queue.push('from this project?'); queue.push('', true);
+    return { early, queued };
+  });
+  expect(result.early).toBe(1);
+  expect(result.queued.join(' ')).toBe('What did you learn from this project?');
+});

@@ -3,6 +3,7 @@ createServer(async (req, res) => {
   if (req.url === '/api/tags') { res.setHeader('Content-Type', 'application/json'); return res.end(JSON.stringify({ models: [{ name: 'qwen3:1.7b' }] })); }
   let body = ''; for await (const chunk of req) body += chunk;
   const input = JSON.parse(body), last = input.messages.at(-1).content;
+  if (input.stream === false) { res.setHeader('Content-Type', 'application/json'); return res.end(JSON.stringify({ done: true })); }
   if (last === 'fail') { res.statusCode = 503; return res.end(); }
   res.setHeader('Content-Type', 'application/x-ndjson');
   const parts = [`I received ${input.messages.length - 1} turns. `, `You said: ${last}. `, 'What did you learn?'];
