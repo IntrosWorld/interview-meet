@@ -18,7 +18,10 @@ model_name = os.environ.get('LOCAL_WHISPER_MODEL', 'tiny.en')
 local_copy = MODEL_ROOT / 'whisper-tiny.en'
 source = str(local_copy) if model_name == 'tiny.en' and (local_copy / 'model.bin').exists() else model_name
 print(f'Loading Whisper {model_name} on CPU; model directory: {MODEL_ROOT}', flush=True)
-model = WhisperModel(source, device='cpu', compute_type='int8', cpu_threads=4, download_root=str(MODEL_ROOT / 'whisper'))
+model = WhisperModel(source, device='cpu', compute_type='int8', cpu_threads=6, download_root=str(MODEL_ROOT / 'whisper'))
+# Pay encoder/decoder initialization before showing ready, not after the first answer.
+import numpy as np
+list(model.transcribe(np.zeros(16000, dtype=np.float32), language='en', beam_size=1, vad_filter=False))
 lock = threading.Lock()
 
 
