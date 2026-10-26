@@ -8,7 +8,7 @@ test('loopback API requires its custom request header and rejects cross origins'
 
 test('streams chat, keeps context, and renders model text safely', async ({ page }) => {
   const outside: string[] = [];
-  page.on('request', r => { if (!r.url().startsWith('http://127.0.0.1:8011')) outside.push(r.url()); });
+  page.on('request', r => { if (/^https?:/.test(r.url()) && new URL(r.url()).origin !== 'http://127.0.0.1:8011') outside.push(r.url()); });
   await page.goto('/');
   await expect(page.locator('#model')).toHaveValue('qwen3:1.7b');
   await page.locator('#message').fill('<script>example</script>');
@@ -102,4 +102,21 @@ test('voice output queues the first phrase before sentence completion', async ({
   });
   expect(result.early).toBe(1);
   expect(result.queued.join(' ')).toBe('What did you learn from this project?');
+});
+
+test('Blender character renders and responds to speech and cancellation', async ({ page }) => {
+  const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
+  await page.goto('/');
+  await expect(page.locator('#avatar-stage')).toHaveAttribute('data-ready','true', { timeout: 30000 });
+  const initial = await page.locator('#avatar-stage').evaluate((e: any) => e.avatarDiagnostics);
+  expect(initial.morphMeshes).toBeGreaterThan(0);
+  await page.evaluate(() => window.dispatchEvent(new CustomEvent('interviewer:speech',{detail:{type:'start',text:'Welcome. What was your most recent project?',rate:1}})));
+  await expect.poll(() => page.locator('#avatar-stage').evaluate((e: any) => e.avatarDiagnostics.jaw)).toBeGreaterThan(.01);
+  await expect(page.locator('#avatar-state')).toHaveText('Speaking');
+  await page.evaluate(() => window.dispatchEvent(new CustomEvent('interviewer:speech',{detail:{type:'cancel'}})));
+  await expect.poll(() => page.locator('#avatar-stage').evaluate((e: any) => e.avatarDiagnostics.jaw)).toBeLessThan(.005);
+  await expect(page.locator('#avatar-state')).toHaveText('Ready');
+  await page.getByRole('button',{name:'Pause idle motion'}).click();
+  await expect(page.getByRole('button',{name:'Resume idle motion'})).toBeVisible();
+  expect(errors).toEqual([]);
 });

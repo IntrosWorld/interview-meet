@@ -8,8 +8,9 @@ export function createVoiceQueue(synthesis, getVoice, onStart, onState = () => {
     const utterance = new SpeechSynthesisUtterance(text.trim());
     utterance.voice = voice; utterance.rate = 1.08;
     live.add(utterance); outstanding++; onState(true);
-    utterance.onstart = () => { if (!started) { started = true; onStart(); } };
-    const finish = () => { if (!live.delete(utterance)) return; outstanding--; onState(outstanding > 0); };
+    utterance.onstart = () => { window.dispatchEvent(new CustomEvent('interviewer:speech',{detail:{type:'start',text:utterance.text,rate:utterance.rate}})); if (!started) { started = true; onStart(); } };
+    utterance.onboundary = event => window.dispatchEvent(new CustomEvent('interviewer:speech',{detail:{type:'boundary',charIndex:event.charIndex}}));
+    const finish = () => { if (!live.delete(utterance)) return; window.dispatchEvent(new CustomEvent('interviewer:speech',{detail:{type:'end'}})); outstanding--; onState(outstanding > 0); };
     utterance.onend = finish; utterance.onerror = finish;
     synthesis?.speak(utterance);
   }
@@ -25,6 +26,6 @@ export function createVoiceQueue(synthesis, getVoice, onStart, onState = () => {
       }
       if (flush && buffer.trim()) { queue(buffer); buffer = ''; }
     },
-    cancel() { synthesis?.cancel(); buffer = ''; first = true; started = false; outstanding = 0; live.clear(); onState(false); }
+    cancel() { synthesis?.cancel(); window.dispatchEvent(new CustomEvent('interviewer:speech',{detail:{type:'cancel'}})); buffer = ''; first = true; started = false; outstanding = 0; live.clear(); onState(false); }
   };
 }
