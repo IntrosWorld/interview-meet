@@ -7,6 +7,7 @@ playwright-report/
 *.log
 .vercel
 *.blend1
+art/aaa/
 art/renders/interviewer-preview*
 art/renders/interviewer-webcam0001.png
 art/renders/interviewer-portrait.png0001.png

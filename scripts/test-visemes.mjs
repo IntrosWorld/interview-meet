@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import{readFile}from'node:fs/promises';
+const code=await readFile('src/client/audio-visemes.js','utf8');
+const{sampleViseme}=await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
+const timeline={duration:1,visemes:[{id:21,time:0,duration:.2},{id:1,time:.2,duration:.3},{id:0,time:.5,duration:.5}]};
+assert.equal(sampleViseme(timeline,-.1).shape,'sil');
+assert.equal(sampleViseme(timeline,.1).shape,'PP');
+assert.equal(sampleViseme(timeline,.3).shape,'aa');
+assert.equal(sampleViseme(timeline,.8).weight,0);
+assert.equal(sampleViseme(timeline,1).weight,0);
+console.log('Audio-time sampling: closure, vowel, silence, start/end boundaries passed.');

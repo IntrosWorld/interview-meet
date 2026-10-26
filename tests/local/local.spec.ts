@@ -120,3 +120,19 @@ test('Blender character renders and responds to speech and cancellation', async 
   await expect(page.getByRole('button',{name:'Resume idle motion'})).toBeVisible();
   expect(errors).toEqual([]);
 });
+
+test('timed WAV playback drives the face on its actual audio clock', async ({ page }) => {
+  const wav=Buffer.alloc(44+32000);wav.write('RIFF',0);wav.writeUInt32LE(wav.length-8,4);wav.write('WAVEfmt ',8);wav.writeUInt32LE(16,16);wav.writeUInt16LE(1,20);wav.writeUInt16LE(1,22);wav.writeUInt32LE(16000,24);wav.writeUInt32LE(32000,28);wav.writeUInt16LE(2,32);wav.writeUInt16LE(16,34);wav.write('data',36);wav.writeUInt32LE(32000,40);
+  await page.route('**/api/synthesize',route=>route.fulfill({json:{audio:wav.toString('base64'),visemes:[{id:1,time:0,duration:.85},{id:0,time:.85,duration:.15}]}}));
+  await page.goto('/');
+  await expect(page.locator('#avatar-stage')).toHaveAttribute('data-ready','true',{timeout:30000});
+  await page.evaluate(async()=>{
+    const{createTimedVoiceQueue}=await import('/assets/timed-voice.js');
+    const q=createTimedVoiceQueue(()=> 'Test voice',()=>{},()=>{});(window as any).timedTestQueue=q;
+    q.push('Hello from this test.');q.push('',true);
+  });
+  await expect.poll(()=>page.locator('#avatar-stage').evaluate((e:any)=>e.avatarDiagnostics.timingMode)).toBe('audio-clock');
+  await expect.poll(()=>page.locator('#avatar-stage').evaluate((e:any)=>e.avatarDiagnostics.jaw)).toBeGreaterThan(.01);
+  await page.evaluate(()=>(window as any).timedTestQueue.cancel());
+  await expect.poll(()=>page.locator('#avatar-stage').evaluate((e:any)=>e.avatarDiagnostics.jaw)).toBeLessThan(.005);
+});

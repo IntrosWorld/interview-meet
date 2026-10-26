@@ -4,6 +4,10 @@
   "description": "Interview Meet - voice and coding interview practice",
   "main": "server.ts",
   "scripts": {
+    "aaa:assets": "node scripts/fetch-aaa-assets.mjs",
+    "aaa:preview": "node scripts/aaa-preview.mjs",
+    "aaa:test-speech": "node scripts/test-timed-speech.mjs",
+    "aaa:test-visemes": "node scripts/test-visemes.mjs",
     "avatar:build": "node scripts/build-avatar.mjs",
     "avatar:optimize": "node scripts/optimize-interviewer.mjs",
     "local": "node scripts/local-launcher.mjs",

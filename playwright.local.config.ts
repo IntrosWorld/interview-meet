@@ -4,6 +4,6 @@ export default defineConfig({
   use: { baseURL: 'http://127.0.0.1:8011', channel: 'chrome' },
   webServer: [
     { command: 'node tests/local/ollama-fixture.mjs', url: 'http://127.0.0.1:11435/api/tags' },
-    { command: 'npx tsx src/local-server.ts', url: 'http://127.0.0.1:8011', env: { LOCAL_PORT: '8011', OLLAMA_URL: 'http://127.0.0.1:11435', LOCAL_SPEECH_URL: 'http://127.0.0.1:18766' } },
+    { command: 'npx tsx src/local-server.ts', url: 'http://127.0.0.1:8011', env: { LOCAL_PORT: '8011', OLLAMA_URL: 'http://127.0.0.1:11435', LOCAL_SPEECH_URL: 'http://127.0.0.1:18766', LOCAL_TTS_URL:'http://127.0.0.1:18767' } },
   ],
 });
