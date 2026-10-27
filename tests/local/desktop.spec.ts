@@ -19,7 +19,8 @@ test('desktop coding sends requested code review without executing code', async 
   await expect(page.locator('#model')).toHaveValue('qwen3:1.7b');
   await page.locator('#language').selectOption('JavaScript');
   await page.locator('#target').fill('Arrays');
-  await page.locator('#code-editor').fill('function sum(a,b) { return a+b; }');
+  await page.locator('.CodeMirror').click();
+  await page.keyboard.type('function sum(a,b) { return a+b; }');
   await page.locator('#review-now-btn').click();
   await expect(page.locator('#status')).toHaveText('Ready for your next answer.');
   await expect(page.locator('#messages')).toContainText('function sum');

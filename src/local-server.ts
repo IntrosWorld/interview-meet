@@ -34,6 +34,7 @@ app.get('/assets/aaa/character.glb',async c=>{
   try{c.header('Content-Type','model/gltf-binary');return c.body(await readFile('F:/AI_models/interview-meet/aaa/interviewer-aaa.glb'));}
   catch{return c.notFound();}
 });
+app.use('/assets/codemirror/*', serveStatic({ root: './node_modules/codemirror', rewriteRequestPath: p => p.replace('/assets/codemirror/', '/') }));
 app.use('/assets/*', serveStatic({ root: './public', rewriteRequestPath: p => p.replace('/assets/', '/') }));
 app.get('/api/status', async c => {
   const [models, stt, timed] = await Promise.allSettled([

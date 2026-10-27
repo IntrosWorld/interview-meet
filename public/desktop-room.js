@@ -45,6 +45,12 @@ if (!coding) {
   $('review-now-btn').onclick = () => submit(`Review my ${$('language').value} solution. Explain correctness and complexity; do not execute it:\n${$('code-editor').value}`);
   $('language').onchange = () => { $('editor-lang-pill').textContent = `Mode: ${$('language').value || 'none'}`; };
   $('code-editor').oninput = () => { const code = $('code-editor').value; $('editor-stats-pill').textContent = `${code.split('\n').length} lines | ${code.length} chars`; };
+  if (window.CodeMirror) {
+    const editor = window.CodeMirror.fromTextArea($('code-editor'), { lineNumbers: true, mode: 'javascript', indentUnit: 2, lineWrapping: true });
+    editor.on('change', () => { editor.save(); $('code-editor').oninput(); });
+    const modes = { JavaScript: 'javascript', TypeScript: 'text/typescript', Python: 'python', Java: 'text/x-java', 'C++': 'text/x-c++src', Go: 'go' };
+    $('language').addEventListener('change', () => editor.setOption('mode', modes[$('language').value] || 'text/plain'));
+  }
 }
 function submit(text) { if ($('send').disabled) return; $('message').value = text.slice(0, 12000); $('chat-form').requestSubmit(); }
 await import('./local.js');
