@@ -6,6 +6,7 @@ import { stream } from 'hono/streaming';
 import { readFile, access } from 'node:fs/promises';
 import { join } from 'node:path';
 import { localOptions, localPrompt } from './local-options.js';
+import { desktopPage } from './desktop-pages.js';
 
 const app = new Hono();
 const ollama = process.env.OLLAMA_URL || 'http://127.0.0.1:11434';
@@ -23,6 +24,8 @@ app.use('/api/*', async (c, next) => {
   await next();
 });
 app.get('/', async c => c.html(await readFile(join(process.cwd(), 'public', 'local.html'), 'utf8')));
+app.get('/desktop/interview', async c => c.html(await desktopPage()));
+app.get('/desktop/coding', async c => c.html(await desktopPage(true)));
 app.get('/api/avatar',async c=>{
   try{await access('F:/AI_models/interview-meet/aaa/interviewer-aaa.glb');return c.json({character:'/assets/aaa/character.glb',license:'Local non-commercial evaluation asset'});}
   catch{return c.json({character:'/assets/models/interviewer.glb',license:'CC0 fallback'});}
