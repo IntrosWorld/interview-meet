@@ -65,23 +65,17 @@ p=navy.node_tree.nodes.get('Principled BSDF');p.inputs['Base Color'].default_val
 # Keep a single skinned garment surface: stacked offset shells clip when arms move.
 top.name='AAA | tailored jacket and shirt'
 top.data.materials.clear();top.data.materials.append(shirt);top.data.materials.append(navy)
+# Cut the actual mesh along both V seams before assigning cloth materials.
+# Assigning whole uncut triangles caused the scrambled, stair-stepped neckline.
+bm=bmesh.new();bm.from_mesh(top.data)
+for normal in [(1,0,-.34),(1,0,.34)]:
+    bmesh.ops.bisect_plane(bm,geom=list(bm.verts)+list(bm.edges)+list(bm.faces),dist=.00001,plane_co=(0,0,1.16),plane_no=normal)
+bm.to_mesh(top.data);bm.free();top.data.update()
 for face in top.data.polygons:
     center=sum((top.data.vertices[i].co for i in face.vertices),Vector())/len(face.vertices)
-    face.material_index=0 if center.y<-.02 and center.z>1.16 and abs(center.x)<(center.z-1.16)*.34 else 1
+    face.material_index=0 if center.z>1.16 and abs(center.x)<(center.z-1.16)*.34 else 1
 
-def surface(x,z):
-    hit,loc,normal,index=top.ray_cast(Vector((x,-2,z)),Vector((0,1,0)))
-    return (x,loc.y-.012 if hit else -.07,z)
-def cloth(name,points,mat):
-    mesh=bpy.data.meshes.new(name);mesh.from_pydata(points,[],[(0,1,2),(0,2,3)]);mesh.update()
-    obj=bpy.data.objects.new(name,mesh);collection.objects.link(obj)
-    obj.parent=top.parent;obj.matrix_parent_inverse=top.matrix_parent_inverse.copy();obj.matrix_basis=top.matrix_basis.copy()
-    obj.data.materials.append(mat);obj.vertex_groups.new(name='Spine2').add(list(range(len(points))),1,'REPLACE')
-    arm=obj.modifiers.new('Spine follow','ARMATURE');arm.object=rig
-    thickness=obj.modifiers.new('Cloth fold','SOLIDIFY');thickness.thickness=.004
-    objects.append(obj)
-for side in [-1,1]:
-    cloth('AAA | jacket lapel',[surface(side*x,z) for x,z in [(.10,1.525),(.155,1.42),(.038,1.22),(.03,1.37)]],navy)
+exec(compile(open(ROOT+'/scripts/tailor-interviewer.py',encoding='utf8').read(),'tailor-interviewer.py','exec'))
 scene.frame_start=1;scene.frame_end=300;scene.render.fps=30
 for o in objects:
     if o.type=='MESH' and o.data.shape_keys:
