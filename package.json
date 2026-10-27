@@ -5,6 +5,7 @@
   "main": "server.ts",
   "scripts": {
     "desktop": "electron electron/main.cjs",
+    "desktop:test-auth": "tsx --test scripts/test-desktop-auth.ts",
     "desktop:install": "node scripts/install-electron.cjs",
     "aaa:assets": "node scripts/fetch-aaa-assets.mjs",
     "aaa:preview": "node scripts/aaa-preview.mjs",
