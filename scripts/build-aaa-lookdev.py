@@ -120,5 +120,5 @@ bpy.ops.wm.save_as_mainfile(filepath=ROOT+'/art/aaa/interviewer-aaa.blend',compr
 bpy.ops.object.select_all(action='DESELECT')
 for o in objects:o.select_set(True)
 bpy.context.view_layer.objects.active=rig
-bpy.ops.export_scene.gltf(filepath=OUT+'/interviewer-aaa.glb',use_selection=True,export_format='GLB',export_animations=False,export_morph=True,export_skins=True)
+bpy.ops.export_scene.gltf(filepath=OUT+'/interviewer-aaa.glb',use_selection=True,export_format='GLB',export_animations=False,export_rest_position_armature=False,export_morph=True,export_skins=True)
 result={'blend':ROOT+'/art/aaa/interviewer-aaa.blend','character':OUT+'/interviewer-aaa.glb','meshCount':len([o for o in objects if o.type=='MESH']),'normalizedHeight':1.78}
