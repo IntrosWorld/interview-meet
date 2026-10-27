@@ -8,6 +8,7 @@ import { createServer } from 'node:http';
 import { join } from 'node:path';
 import dotenv from 'dotenv';
 import { registerAccounts, verifyToken } from './src/accounts.js';
+import { registerDesktopAuth } from './src/desktop-auth.js';
 import { serveStatic } from '@hono/node-server/serve-static';
 
 dotenv.config();
@@ -138,6 +139,13 @@ function createApplicationServer() {
   const app = new Hono();
 
   registerAccounts(app);
+  registerDesktopAuth(app);
+  for (const route of ['/desktop/authorize', '/desktop/complete']) {
+    app.get(route, async c => {
+      c.header('Cache-Control', 'no-store'); c.header('Referrer-Policy', 'no-referrer');
+      return c.html(await readFile(join(process.cwd(), 'public', 'desktop-login.html'), 'utf8'));
+    });
+  }
   app.use('/assets/*', serveStatic({ root: './public', rewriteRequestPath: p => p.replace('/assets/', '/') }));
   for (const route of ['/login', '/signup', '/history']) {
     app.get(route, async (c) => c.html(await readFile(join(process.cwd(), 'public', 'account.html'), 'utf-8')));

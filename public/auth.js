@@ -1,6 +1,6 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js';
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword,
-  GoogleAuthProvider, signInWithPopup, signOut, updateProfile, sendPasswordResetEmail
+  GoogleAuthProvider, signInWithPopup, signOut, updateProfile, sendPasswordResetEmail, signInWithCustomToken
 } from 'https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js';
 
 let auth;
@@ -20,7 +20,7 @@ ready.catch(() => {});
 export async function requireUser() {
   await ready;
   if (!auth.currentUser) {
-    location.assign('/login?next=' + encodeURIComponent(location.pathname));
+    location.assign('/login?next=' + encodeURIComponent(location.pathname + location.search));
     throw new Error('Sign in to continue');
   }
   return auth.currentUser;
@@ -33,6 +33,10 @@ export async function api(path, options = {}) {
   const data = await response.json();
   if (!response.ok) throw new Error(data.error || 'Request failed. Please try again.');
   return data;
+}
+export async function completeDesktopSignIn(token) {
+  await ready;
+  return signInWithCustomToken(auth, token);
 }
 export async function authenticateSocket(socket) {
   const user = await requireUser();
@@ -96,7 +100,10 @@ if (form) {
   document.getElementById('auth-switch').innerHTML = signup ? 'Already have an account? <a href="/login">Log in</a>' : 'New to Interview Meet? <a href="/signup">Create an account</a>';
   document.getElementById('reset-password').hidden = signup;
   const status = document.getElementById('auth-status');
-  const destination = () => { const next = new URLSearchParams(location.search).get('next'); return ['/', '/interview', '/coding', '/history'].includes(next) ? next : '/history'; };
+  const destination = () => { const next = new URLSearchParams(location.search).get('next');
+    if (['/', '/interview', '/coding', '/history'].includes(next)) return next;
+    try { const u = new URL(next, location.origin); if (u.origin === location.origin && u.pathname === '/desktop/authorize') return u.pathname + u.search; } catch {}
+    return '/history'; };
   const messages = { 'auth/invalid-credential': 'Email or password is incorrect.', 'auth/email-already-in-use': 'This email already has an account. Try logging in.', 'auth/popup-closed-by-user': 'Sign-in was cancelled. You can try again.', 'auth/weak-password': 'Use a password with at least 8 characters.', 'auth/too-many-requests': 'Too many attempts. Please wait and try again.', 'auth/unauthorized-domain': 'This domain needs to be added to Firebase authorized domains.' };
   const run = async action => {
     const buttons = [...form.querySelectorAll('button'), document.getElementById('google-signin')];

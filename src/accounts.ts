@@ -6,6 +6,10 @@ import { randomUUID } from 'node:crypto';
 import { bodyLimit } from 'hono/body-limit';
 
 export async function verifyToken(token: string): Promise<DecodedIdToken> {
+  ensureFirebase();
+  return getAuth().verifyIdToken(token);
+}
+export function ensureFirebase() {
   if (!process.env.FIREBASE_PROJECT_ID) throw new Error('Authentication is not configured');
   if (!getApps().length) {
     const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
@@ -13,7 +17,6 @@ export async function verifyToken(token: string): Promise<DecodedIdToken> {
       ? { credential: cert(JSON.parse(serviceAccount)), projectId: process.env.FIREBASE_PROJECT_ID }
       : { projectId: process.env.FIREBASE_PROJECT_ID });
   }
-  return getAuth().verifyIdToken(token);
 }
 
 function database() {
