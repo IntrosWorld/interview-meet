@@ -16,6 +16,7 @@ export function registerDesktopAuth(app: Hono, dependencies?: { sql: any; mint: 
   app.post('/api/account/desktop/authorize', async c => {
     const body = await c.req.json().catch(() => null);
     if (!body || !validChallenge(body.challenge) || !validCallback(body.redirect)) return c.json({ error: 'Invalid desktop authorization' }, 400);
+    if (!dependencies && !process.env.FIREBASE_SERVICE_ACCOUNT_JSON) return c.json({ error: 'Desktop sign-in is not configured on the website yet. The owner needs to add the Firebase service-account signing credential.' }, 503);
     const user = c.get('user' as never) as { uid: string; auth_time: number };
     if (Date.now() / 1000 - user.auth_time > 600) return c.json({ error: 'Please sign out and sign in again before linking this desktop.' }, 401);
     const sql = dependencies?.sql || neon(process.env.DATABASE_URL!);

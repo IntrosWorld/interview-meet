@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { neon } from '@neondatabase/serverless';
 dotenv.config({ path: process.argv[2] || '.env', override: true, quiet: true });
 try {
-  if (!process.env.DATABASE_URL) throw new Error();
+  if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL missing');
   const sql = neon(process.env.DATABASE_URL);
   const source = await readFile('database/002_desktop_login.sql', 'utf8');
   for (const statement of source.split(';').filter(s => s.trim())) await sql.query(statement);
@@ -11,7 +11,7 @@ try {
   if (!rows[0].name) throw new Error();
   console.log('Desktop login table verified in the selected database.');
   console.log('Firebase signing credential configured:', Boolean(process.env.FIREBASE_SERVICE_ACCOUNT_JSON));
-} catch {
-  console.error('Desktop migration failed. Check the selected environment and database permissions.');
+} catch (error) {
+  console.error('Desktop migration failed. Check the selected environment and database permissions.', { type: error.name, code: error.code || 'unavailable' });
   process.exitCode = 1;
 }
