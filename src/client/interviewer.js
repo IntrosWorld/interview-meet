@@ -60,7 +60,7 @@ async function initialize() {
   }
   function speech(event) {
     const d=event.detail;
-    if(d.type==='audio'){audioTimelines.push(d);state.textContent='Speaking · audio-timed';return;}
+    if(d.type==='audio'||d.type==='pcm'){audioTimelines.push(d);state.textContent=d.type==='pcm'?'Speaking · audio-driven':'Speaking · audio-timed';return;}
     if(d.type==='start') { phrase=d.text; phraseStart=time; boundaryStart=time; boundaryIndex=0; rate=14*(d.rate||1); speaking=true; state.textContent='Speaking'; }
     if(d.type==='boundary') { boundaryIndex=d.charIndex; boundaryStart=time; }
     if(d.type==='end'||d.type==='cancel') { speaking=false; audioTimelines=[];state.textContent='Ready'; }
@@ -78,7 +78,9 @@ async function initialize() {
     morph('eyeBlinkLeft',motion&&!reduced.matches?blink:0,.7); morph('eyeBlinkRight',motion&&!reduced.matches?blink:0,.7);
     audioTimelines=audioTimelines.filter(t=>t.context.currentTime<t.start+t.duration+.05);
     const audio=audioTimelines.find(t=>t.context.currentTime>=t.start&&t.context.currentTime<t.start+t.duration);
-    const precise=audio?sampleViseme(audio,audio.context.currentTime-audio.start):null;
+    const elapsed=audio?audio.context.currentTime-audio.start:0;
+    const energy=audio?.type==='pcm'?(audio.envelope[Math.floor(elapsed/audio.step)]||0):0;
+    const precise=audio?(audio.type==='pcm'?{shape:energy>.025?'aa':'sil',weight:energy}:sampleViseme(audio,elapsed)):null;
     if(audioTimelines.length)speaking=Boolean(audio);
     const index=Math.min(phrase.length-1,boundaryIndex+Math.floor((time-boundaryStart)*rate));
     const letter=speaking?(phrase[index]||' ').toLowerCase():' ';

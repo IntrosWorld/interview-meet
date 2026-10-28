@@ -140,6 +140,7 @@ function createApplicationServer() {
 
   registerAccounts(app);
   registerDesktopAuth(app);
+  app.get('/api/avatar', c => c.json({ character: '/assets/models/interviewer-demo.glb', license: 'AvatarSDK non-commercial example; see /assets/models/ATTRIBUTION.md' }));
   for (const route of ['/desktop/authorize', '/desktop/complete']) {
     app.get(route, async c => {
       c.header('Cache-Control', 'no-store'); c.header('Referrer-Policy', 'no-referrer');

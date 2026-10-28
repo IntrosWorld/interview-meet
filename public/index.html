@@ -6,6 +6,7 @@
   <title>Interview Meet - AI Interviewer</title>
   <link rel="stylesheet" href="/assets/design.css">
   <link rel="stylesheet" href="/assets/room.css">
+  <link rel="stylesheet" href="/assets/web-avatar.css">
 <link rel="icon" type="image/png" href="/assets/images/interview-meet-logo.png"></head>
 <body class="interview-page">
   <div class="page">
@@ -30,15 +31,13 @@
             Listening
           </div>
         </div>
-        <div class="avatar-wrap">
-          <div class="avatar-ring"></div>
-          <div class="avatar" aria-label="AI interviewer">
-            <i class="ph ph-waveform" aria-hidden="true"></i>
-          </div>
+        <div id="avatar-stage" class="web-avatar-stage" aria-label="3D interviewer">
+          <div class="avatar-info"><span id="avatar-state" role="status">Loading 3D interviewer…</span></div>
+          <button id="avatar-motion" class="avatar-motion" type="button">Pause idle motion</button>
         </div>
         <div class="participant-meta">
           <div class="participant-name">AI Interviewer</div>
-          <div class="participant-title">Real-time AI Interviewer</div>
+          <div class="participant-title">Non-commercial 3D demo · <a href="/assets/models/ATTRIBUTION.md" target="_blank" rel="noopener">Character credits</a></div>
         </div>
       </section>
 
@@ -119,6 +118,7 @@
     </section>
   </div>
 
+  <script type="module" src="/assets/interviewer.bundle.js"></script>
   <script type="module">
     import { authenticateSocket, beginSession, saveSession } from "/assets/session.js";
     let ws = null;
@@ -337,6 +337,7 @@
           geminiActiveSources = Math.max(0, geminiActiveSources - 1);
           if (geminiActiveSources === 0) {
             setGeminiSpeaking(false);
+            window.dispatchEvent(new CustomEvent('interviewer:speech', { detail: { type: 'end' } }));
           }
         };
 
@@ -344,6 +345,14 @@
           nextStartTime = audioContext.currentTime;
         }
         source.start(nextStartTime);
+        const step = .02, envelope = [];
+        const size = Math.max(1, Math.round(sampleRate * step));
+        for (let i = 0; i < audioChunks.length; i += size) {
+          let sum = 0; const end = Math.min(i + size, audioChunks.length);
+          for (let j = i; j < end; j++) sum += audioChunks[j] * audioChunks[j];
+          envelope.push(Math.min(1, Math.sqrt(sum / (end - i)) * 8));
+        }
+        window.dispatchEvent(new CustomEvent('interviewer:speech', { detail: { type: 'pcm', context: audioContext, start: nextStartTime, duration: audioBuffer.duration, envelope, step } }));
         nextStartTime += audioBuffer.duration;
       }
       queueProcessing = false;
@@ -560,6 +569,7 @@
     }
 
     function resetSessionState() {
+      window.dispatchEvent(new CustomEvent('interviewer:speech', { detail: { type: 'cancel' } }));
       interviewStarted = false;
       interviewTarget = '';
       audioQueue = [];

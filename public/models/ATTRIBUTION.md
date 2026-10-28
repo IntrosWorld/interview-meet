@@ -1,5 +1,15 @@
 # Interviewer character and studio
 
+## Public non-commercial demo character
+
+`interviewer-demo.glb` is derived from the AvatarSDK example `avatarsdk.glb` in met4citizen/TalkingHead, pinned at commit `46b32ee539c41eb7c6b41fcfc74ae030d1b800a7`. Upstream describes it as created at AvatarSDK for non-commercial use. This is NOT CC0. The free Interview Meet demo uses it on that non-commercial basis; do not repurpose it for commercial use. AvatarSDK retains the underlying rights. Upstream does not supply a full redistribution license in this attribution; confirm the rights holder's terms before broader distribution or commercial launch.
+
+Source: https://github.com/met4citizen/TalkingHead/tree/46b32ee539c41eb7c6b41fcfc74ae030d1b800a7#the-indexhtml-test-app
+AvatarSDK: https://avatarsdk.com
+Changes: clothing seams, fitted lapels, relaxed arm pose, skin shading and facial animation integration.
+
+The following section documents the separate CC0 fallback character, not the public demo character.
+
 Base human, topology, skin/eye/hair textures and facial shapes: `mpfb.glb` by met4citizen, created using Blender and MPFB. The upstream author explicitly releases this avatar under CC0:
 https://github.com/met4citizen/TalkingHead#readme (web app asset attribution section).
 Original download: https://raw.githubusercontent.com/met4citizen/TalkingHead/main/avatars/mpfb.glb

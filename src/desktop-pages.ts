@@ -7,5 +7,5 @@ export async function desktopPage(coding = false) {
   html = html.replace(/<link\b[^>]*href="https:[^"]*"[^>]*>/g, '');
   if (coding) html = html.replace('</head>', '<link rel="stylesheet" href="/assets/codemirror/lib/codemirror.css"><script src="/assets/codemirror/lib/codemirror.js"></script><script src="/assets/codemirror/mode/javascript/javascript.js"></script><script src="/assets/codemirror/mode/python/python.js"></script><script src="/assets/codemirror/mode/clike/clike.js"></script><script src="/assets/codemirror/mode/go/go.js"></script></head>');
   html = html.replaceAll('href="/coding"', 'href="/desktop/coding"').replaceAll('href="/interview"', 'href="/desktop/interview"');
-  return html.replace('</body>', '<script type="module" src="/assets/desktop-room.js"></script></body>');
+  return html.replace('</body>', '<script type="module" src="/assets/desktop-room.js"></script>' + (coding ? '' : '<script type="module" src="/assets/interviewer.bundle.js"></script>') + '</body>');
 }
