@@ -5,7 +5,7 @@ Add-Type -AssemblyName System.Speech
 function Invoke-TimedSpeech($requestData) {
 $synth = New-Object System.Speech.Synthesis.SpeechSynthesizer
 if ($requestData.action -eq 'voices') {
-    $voices = @($synth.GetInstalledVoices() | Where-Object Enabled | ForEach-Object { @{ name = $_.VoiceInfo.Name; culture = $_.VoiceInfo.Culture.Name } })
+    $voices = @($synth.GetInstalledVoices() | Where-Object Enabled | ForEach-Object { @{ name = $_.VoiceInfo.Name; culture = $_.VoiceInfo.Culture.Name; gender = $_.VoiceInfo.Gender.ToString() } })
     @{ voices = $voices } | ConvertTo-Json -Compress -Depth 5
     $synth.Dispose()
     return

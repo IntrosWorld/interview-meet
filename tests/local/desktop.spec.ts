@@ -5,6 +5,9 @@ test('desktop interview reuses web layout with local conversation', async ({ pag
   await page.goto('/desktop/interview');
   await expect(page.locator('h1')).toHaveText('Make your next answer count.');
   await expect(page.locator('#model')).toHaveValue('qwen3:1.7b');
+  await expect(page.locator('#avatar-stage')).toHaveAttribute('data-ready', 'true', { timeout: 30000 });
+  await page.getByLabel('Interviewer avatar').selectOption('female');
+  await expect(page.locator('#avatar-stage')).toHaveAttribute('data-avatar', 'female');
   await page.locator('#target').fill('Backend engineer');
   await page.locator('#message').fill('Hello');
   await page.locator('#send').click();

@@ -1,11 +1,14 @@
 import { createVoiceQueue } from './local-voice.js';
 import { createTimedVoiceQueue } from './timed-voice.js';
+import { initVoiceStyle, localVoiceGender } from './voice-preference.js';
 const $ = id => document.getElementById(id);
+const voiceStyle = initVoiceStyle();
 let history = [], active, recorder, media, chunks = [], recordingTimer;
 let busy = false, whisperReady = false, captureBusy = false, warming = false, speechBusy = false;
 let prepared = '', handsFree = false, discarded = false, analyserContext, vadFrame, resumeTimer;
 let timing = {}, modelMetrics = '';
-let timedVoices = [], timedSpeechReady = false;
+let timedVoices = [];
+let voiceChosen = false;
 let lastVoiceAt = 0, preview, snapshotRequested = false;
 const status = text => $('status').textContent = text;
 const headers = { 'Content-Type': 'application/json', 'X-Local-Lab': '1' };
@@ -15,6 +18,7 @@ function controls() {
   $('target').disabled = busy || captureBusy || warming || handsFree;
   $('model').disabled = busy || captureBusy || warming || handsFree;
   $('voice').disabled = busy || captureBusy || speechBusy || handsFree;
+  voiceStyle.disabled = busy || captureBusy || speechBusy || handsFree;
   $('automatic').disabled = handsFree || captureBusy || busy;
   $('cancel').hidden = !busy && !speechBusy;
   $('record').disabled = !handsFree && (busy || warming || !whisperReady || (captureBusy && recorder?.state !== 'recording'));
@@ -30,11 +34,25 @@ function add(role, text = '') {
 function voices() {
   const selected = $('voice').value;
   $('voice').replaceChildren(new Option('Voice output off', ''));
-  for (const voice of window.speechSynthesis?.getVoices().filter(v => v.localService) || []) $('voice').add(new Option(voice.name, voice.voiceURI));
-  for (const voice of timedVoices) $('voice').add(new Option(voice.name+' · timed WAV', 'timed:'+voice.name));
-  $('voice').value = selected;
+  const browserVoices = (window.speechSynthesis?.getVoices() || []).filter(v => v.localService);
+  const matches = voice => localVoiceGender(voice, timedVoices) === voiceStyle.value;
+  // Prefer timed voices for audio-clock lip sync, and English voices for this English-only lab.
+  for (const voice of [...timedVoices].filter(matches).sort((a, b) => Number(!a.culture?.startsWith('en')) - Number(!b.culture?.startsWith('en')))) $('voice').add(new Option(voice.name+' · timed WAV', 'timed:'+voice.name));
+  for (const voice of browserVoices.filter(matches).sort((a, b) => Number(!a.lang.startsWith('en')) - Number(!b.lang.startsWith('en')))) $('voice').add(new Option(voice.name, voice.voiceURI));
+  for (const voice of browserVoices.filter(v => localVoiceGender(v, timedVoices) === 'unknown')) $('voice').add(new Option(voice.name+' · voice type unavailable', voice.voiceURI));
+  const preferred = [...$('voice').options].find(o => o.value && !o.text.includes('voice type unavailable'));
+  $('voice').value = voiceChosen ? selected : preferred?.value || '';
   if (!$('voice').value && selected) status('Your selected local voice is no longer available. Voice output is off.');
 }
+voiceStyle.addEventListener('change', () => {
+  cancelVoice();
+  voiceChosen = false;
+  voices();
+  const matching = [...$('voice').options].find(o => o.value && !o.text.includes('voice type unavailable'));
+  $('voice').value = matching?.value || '';
+  status(matching ? 'Reply voice updated.' : `No installed ${voiceStyle.value} voice is available. Choose another voice type or install a local voice.`);
+});
+$('voice').addEventListener('change', () => { voiceChosen = true; });
 if (window.speechSynthesis) { window.speechSynthesis.addEventListener('voiceschanged', voices); voices(); }
 function showTiming() {
   $('metrics').textContent = [timing.transcriptionMs != null ? `Recognition: ${timing.transcriptionMs} ms` : '',
@@ -70,7 +88,6 @@ async function health() {
     for (const model of data.models) $('model').add(new Option(model, model));
     $('model').value = data.models.includes(selected) ? selected : data.models.includes(data.defaultModel) ? data.defaultModel : data.models.includes('qwen3:1.7b') ? 'qwen3:1.7b' : data.models[0] || '';
     whisperReady = data.speechReady;
-    timedSpeechReady = Boolean(data.timedSpeech?.ready);
     timedVoices = data.timedSpeech?.voices || []; voices();
     $('health').textContent = `Ollama: ${data.ollamaReady ? 'ready' : 'not running'}. Whisper: ${data.speechReady ? data.speech.model + ' ready' : 'starting or unavailable'}.`;
   } catch { $('health').textContent = 'Cannot reach local services. Start npm run local and check again.'; }
@@ -193,8 +210,7 @@ $('record').onclick = () => {
   if (handsFree) { endConversation(); status('Conversation ended. Microphone off.'); return; }
   if (recorder?.state === 'recording') { recorder.stop(); return; }
   if ($('automatic').checked) {
-    const localVoices = window.speechSynthesis?.getVoices().filter(v => v.localService) || [];
-    if (!$('voice').value) $('voice').value = timedSpeechReady && timedVoices.length ? 'timed:'+timedVoices[0].name : (localVoices.find(v => v.lang.startsWith('en')) || localVoices[0])?.voiceURI || '';
+    if (!$('voice').value) $('voice').value = [...$('voice').options].find(o => o.value)?.value || '';
     if (!$('voice').value) return status('Choose an installed local voice for hands-free conversation, or turn Hands-free off for typed replies.');
     handsFree = true;
   }

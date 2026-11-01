@@ -55,7 +55,7 @@ function createApplicationServer() {
     speechConfig: {
       voiceConfig: {
         prebuiltVoiceConfig: {
-          voiceName: 'Aoede',
+          voiceName: 'Charon',
         },
       },
     },
@@ -66,7 +66,7 @@ function createApplicationServer() {
   function createLiveSession(socket: WebSocket) {
   let sessionPromise: ReturnType<typeof connectGemini> | null = null;
 
-  function connectGemini() {
+  function connectGemini(voiceStyle: unknown = 'male') {
     if (!GOOGLE_API_KEY) {
       return Promise.reject(new Error('GOOGLE_API_KEY is not configured'));
     }
@@ -79,7 +79,12 @@ function createApplicationServer() {
     console.log('🔌 Connecting to Gemini Live API with model:', model);
     return ai.live.connect({
       model,
-      config,
+      config: {
+        ...config,
+        speechConfig: { voiceConfig: { prebuiltVoiceConfig: {
+          voiceName: voiceStyle === 'female' ? 'Aoede' : 'Charon',
+        } } },
+      },
       callbacks: {
         onopen: () => {
           console.log('✅ Live Session Opened Successfully');
@@ -124,9 +129,9 @@ function createApplicationServer() {
     });
   }
 
-  function getGeminiSession() {
+  function getGeminiSession(voiceStyle: unknown = 'male') {
     if (!sessionPromise) {
-      sessionPromise = connectGemini().catch((error) => {
+      sessionPromise = connectGemini(voiceStyle).catch((error) => {
         sessionPromise = null;
         throw error;
       });
@@ -200,7 +205,7 @@ function createApplicationServer() {
           return;
         }
 
-        const session = await live.getGeminiSession();
+        const session = await live.getGeminiSession(message.voiceStyle);
 
         if (message.type === 'startInterview') {
           const interviewTarget = String(message.interviewTarget || '').trim();

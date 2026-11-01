@@ -11,6 +11,9 @@ if (host) initialize().catch(error => {
 });
 
 async function initialize() {
+  const avatarSelect = document.getElementById('avatar-style');
+  try { if (avatarSelect) avatarSelect.value = localStorage.getItem('interview-avatar-style') === 'female' ? 'female' : 'male'; } catch {}
+  if (avatarSelect) avatarSelect.disabled = true;
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'low-power' });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -30,8 +33,12 @@ async function initialize() {
   const ambient = new THREE.HemisphereLight(0xe8eef7,0x292c34,.35); scene.add(ambient);
   const loader = new GLTFLoader();
   const config=await fetch('/api/avatar').then(r=>r.ok?r.json():{}).catch(()=>({}));
-  const [person,studio] = await Promise.all([loader.loadAsync(config.character||'/assets/models/interviewer.glb'),loader.loadAsync('/assets/models/interviewer-studio.glb')]);
+  const characterPath = style => style === 'female' ? '/assets/models/interviewer-female.glb' : config.character || '/assets/models/interviewer.glb';
+  let person;
+  const [initial,studio] = await Promise.all([loader.loadAsync(characterPath(avatarSelect?.value)),loader.loadAsync('/assets/models/interviewer-studio.glb')]);
   const faceMeshes=[], rest=new Map(); let head, neck;
+  function attachCharacter(model) {
+  person = model; faceMeshes.length = 0; rest.clear(); head = null; neck = null;
   person.scene.traverse(o => {
     if (o.isMesh) {
       o.castShadow=true; o.receiveShadow=true;
@@ -43,15 +50,54 @@ async function initialize() {
     if(o.name==='Neck') neck=o;
   });
   for(const bone of [head,neck]) if(bone) rest.set(bone,bone.quaternion.clone());
+  scene.add(person.scene);
+  }
+  attachCharacter(initial);
   studio.scene.traverse(o=>{if(o.isMesh) o.receiveShadow=true;});
-  scene.add(studio.scene,person.scene);
+  scene.add(studio.scene);
   await renderer.compileAsync(scene,camera);
   host.dataset.ready='true'; state.textContent='Ready';
   let phrase='', phraseStart=0, rate=14, speaking=false, boundaryStart=0, boundaryIndex=0, nextBlink=2.4, blinkStart=-10, time=0, frame, last=performance.now(), motion=true;
   let audioTimelines=[];
   const reduced=matchMedia('(prefers-reduced-motion: reduce)');
-  const debug={ready:true, speaking:false, frames:0, jaw:0, morphMeshes:faceMeshes.length, drawCalls:0};
+  const debug={ready:true, speaking:false, frames:0, jaw:0, morphMeshes:faceMeshes.length, drawCalls:0, avatar:avatarSelect?.value || 'male'};
   host.avatarDiagnostics=debug;
+  host.dataset.avatar = debug.avatar;
+  function disposeCharacter(model) {
+    const geometries = new Set(), materials = new Set(), textures = new Set();
+    model.scene.traverse(o => { if (o.isMesh) {
+      geometries.add(o.geometry);
+      for (const m of Array.isArray(o.material) ? o.material : [o.material]) {
+        materials.add(m); for (const v of Object.values(m)) if (v?.isTexture) textures.add(v);
+      }
+    } });
+    for (const resource of [...textures, ...materials, ...geometries]) resource.dispose();
+  }
+  let loading = 0, disposed = false;
+  if (avatarSelect) {
+    avatarSelect.disabled = false;
+    avatarSelect.addEventListener('change', async () => {
+      const request = ++loading, previousStyle = debug.avatar;
+      avatarSelect.disabled = true; state.textContent = 'Loading avatar…';
+      try {
+        const model = await loader.loadAsync(characterPath(avatarSelect.value));
+        if (disposed || request !== loading) { disposeCharacter(model); return; }
+        // Compile before replacing the visible model; a failed load leaves it intact.
+        const preview = new THREE.Scene(); preview.add(model.scene);
+        await renderer.compileAsync(preview, camera);
+        if (disposed || request !== loading) { disposeCharacter(model); return; }
+        const previous = person; scene.remove(previous.scene); attachCharacter(model); disposeCharacter(previous);
+        debug.avatar = avatarSelect.value; debug.morphMeshes = faceMeshes.length;
+        host.dataset.avatar = debug.avatar;
+        try { localStorage.setItem('interview-avatar-style', debug.avatar); } catch {}
+        state.textContent = speaking ? 'Speaking' : 'Ready';
+      } catch (error) {
+        avatarSelect.value = previousStyle;
+        state.textContent = 'Could not load avatar. Current interviewer kept.';
+        console.warn('Avatar selection:', error.message);
+      } finally { if (!disposed && request === loading) avatarSelect.disabled = false; }
+    });
+  }
   function morph(name,value,smoothing=.3) {
     for(const mesh of faceMeshes) {
       const i=mesh.morphTargetDictionary[name];
@@ -99,6 +145,7 @@ async function initialize() {
   }
   frame=requestAnimationFrame(animate);
   window.addEventListener('pagehide',()=>{
+    disposed = true; loading++;
     cancelAnimationFrame(frame); observer.disconnect(); window.removeEventListener('interviewer:speech',speech);
     scene.traverse(o=>{if(o.isMesh){o.geometry.dispose();for(const m of(Array.isArray(o.material)?o.material:[o.material])){for(const v of Object.values(m))if(v?.isTexture)v.dispose();m.dispose();}}});
     environment.dispose(); renderer.dispose();

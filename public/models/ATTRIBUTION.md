@@ -1,5 +1,24 @@
 # Interviewer character and studio
 
+## Textured female demo character
+
+`interviewer-female.glb` is derived from the Avaturn example `avaturn.glb` in
+met4citizen/TalkingHead, pinned at commit
+`8c3fe13df098fac1ad62bb61972a404d2827ba54`. The upstream README identifies
+the Avaturn example as created for non-commercial use. This character is not
+covered by this repository's Apache-2.0 code license and is not CC0.
+
+Source: https://github.com/met4citizen/TalkingHead/blob/8c3fe13df098fac1ad62bb61972a404d2827ba54/avatars/avaturn.glb
+Credits and use statement: https://github.com/met4citizen/TalkingHead/blob/8c3fe13df098fac1ad62bb61972a404d2827ba54/README.md#credits
+Avatar creator: https://avaturn.me/
+
+Modifications: matched the male character's studio scale and eye-line, relaxed
+the arm pose, reset facial weights, tuned roughness, and deduplicated/pruned the
+GLB while preserving textures, skinning, and facial morphs. Rebuild with
+`node scripts/build-female-avatar.mjs`; it verifies the pinned source checksum.
+No TalkingHead JavaScript library code is included. Broader or commercial use
+requires checking the character rights holder's terms, as with the male demo.
+
 ## Public non-commercial demo character
 
 `interviewer-demo.glb` is derived from the AvatarSDK example `avatarsdk.glb` in met4citizen/TalkingHead, pinned at commit `46b32ee539c41eb7c6b41fcfc74ae030d1b800a7`. Upstream describes it as created at AvatarSDK for non-commercial use. This is NOT CC0. The free Interview Meet demo uses it on that non-commercial basis; do not repurpose it for commercial use. AvatarSDK retains the underlying rights. Upstream does not supply a full redistribution license in this attribution; confirm the rights holder's terms before broader distribution or commercial launch.

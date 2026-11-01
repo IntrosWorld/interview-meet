@@ -18,6 +18,11 @@
         <p class="muted">Direct coding assessment mode. Pick a language and topic, then the AI interviewer gives you a coding problem immediately.</p>
       </div>
 
+      <div>
+        <label class="label" for="voice-style">Interviewer voice</label>
+        <select id="voice-style" class="field"><option value="male">Male (default)</option><option value="female">Female</option></select>
+      </div>
+      <p class="muted">Choose a voice before starting the session.</p>
       <div class="row">
         <span id="conn-status" class="status">Disconnected</span>
         <span id="sync-status" class="status">Idle</span>
@@ -89,6 +94,8 @@
 
   <script type="module">
     import { authenticateSocket, beginSession, saveSession } from "/assets/session.js";
+    import { initVoiceStyle } from "/assets/voice-preference.js";
+    const voiceStyle = initVoiceStyle();
     const languageSelect = document.getElementById('language');
     const topicInput = document.getElementById('topic');
     const startBtn = document.getElementById('start-btn');
@@ -639,6 +646,7 @@
     }
 
     function resetState() {
+      voiceStyle.disabled = false;
       started = false;
       lastReviewedCode = '';
       audioQueue = [];
@@ -667,9 +675,11 @@
 
     startBtn.addEventListener('click', async () => {
       startBtn.disabled = true;
+      voiceStyle.disabled = true;
       const language = languageSelect.value;
       const topic = topicInput.value.trim();
       if (!language || !topic) {
+        voiceStyle.disabled = false;
         return;
       }
 
@@ -684,6 +694,7 @@
         await ensureSocket();
         ws.send(JSON.stringify({
           type: 'startCodingInterview',
+          voiceStyle: voiceStyle.value,
           language,
           topic,
         }));
@@ -705,6 +716,7 @@
           editor.focus();
         }
       } catch (error) {
+        voiceStyle.disabled = false;
         updateStartAvailability();
         if (ws) ws.close();
         saveSession('interrupted').catch(() => {});

@@ -1,5 +1,39 @@
 import { test, expect } from '@playwright/test';
 
+test('voice style defaults to male, filters installed voices, and remembers the choice', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(window, 'speechSynthesis', { value: {
+      getVoices: () => [
+        { voiceURI: 'david', name: 'Microsoft David', lang: 'en-US', localService: true },
+        { voiceURI: 'zira', name: 'Microsoft Zira', lang: 'en-US', localService: true }
+      ], addEventListener() {}, cancel() {}
+    } });
+  });
+  await page.goto('/');
+  await expect(page.locator('#model')).toHaveValue('qwen3:1.7b');
+  await expect(page.getByLabel('Interviewer voice')).toHaveValue('male');
+  await expect(page.locator('#voice')).toHaveValue('david');
+  await expect(page.locator('#voice option')).toHaveText(['Voice output off', 'Microsoft David']);
+  await page.getByLabel('Interviewer voice').selectOption('female');
+  await expect(page.locator('#voice')).toHaveValue('zira');
+  await expect(page.locator('#voice option')).toHaveText(['Voice output off', 'Microsoft Zira']);
+  await page.reload();
+  await expect(page.getByLabel('Interviewer voice')).toHaveValue('female');
+});
+
+test('local mode explains when the requested voice type is not installed', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(window, 'speechSynthesis', { value: {
+      getVoices: () => [], addEventListener() {}, cancel() {}
+    } });
+  });
+  await page.goto('/');
+  await expect(page.locator('#model')).toHaveValue('qwen3:1.7b');
+  await page.getByLabel('Interviewer voice').selectOption('female');
+  await expect(page.locator('#voice')).toHaveValue('');
+  await expect(page.locator('#status')).toContainText('No installed female voice is available');
+});
+
 test('loopback API requires its custom request header and rejects cross origins', async ({ request }) => {
   expect((await request.post('/api/chat', { data: {} })).status()).toBe(403);
   expect((await request.post('/api/chat', { headers: { 'X-Local-Lab': '1', Origin: 'https://outside.test' }, data: {} })).status()).toBe(403);

@@ -72,6 +72,15 @@
             <label for="interview-target-input">What role are you preparing for?</label><input id="interview-target-input" type="text" placeholder="Type interview target before start, e.g. Backend Engineer L4 at Stripe">
           </div>
 
+          <div class="input-row">
+            <label for="voice-style">Interviewer voice</label>
+            <select id="voice-style"><option value="male">Male (default)</option><option value="female">Female</option></select>
+          </div>
+          <div class="input-row">
+            <label for="avatar-style">Interviewer avatar</label>
+            <select id="avatar-style"><option value="male">Male (default)</option><option value="female">Female</option></select>
+          </div>
+          <p class="helper">Choose your avatar and voice separately. Voice changes apply to the next interview.</p>
           <div class="control-row">
             <button class="btn primary" id="startBtn" type="button" disabled>Start Interview</button>
             <button class="btn danger" id="stopBtn" type="button" disabled>End Interview</button>
@@ -121,6 +130,8 @@
   <script type="module" src="/assets/interviewer.bundle.js"></script>
   <script type="module">
     import { authenticateSocket, beginSession, saveSession } from "/assets/session.js";
+    import { initVoiceStyle } from "/assets/voice-preference.js";
+    const voiceStyle = initVoiceStyle();
     let ws = null;
     let audioContext = null;
     let microphone = null;
@@ -586,6 +597,7 @@
       textInput.disabled = true;
       sendTextBtn.disabled = true;
       interviewTargetInput.disabled = false;
+      voiceStyle.disabled = false;
       startBtn.disabled = !interviewTargetInput.value.trim();
       stopBtn.disabled = true;
       setGeminiSpeaking(false);
@@ -621,10 +633,12 @@
 
     startBtn.addEventListener('click', async () => {
       startBtn.disabled = true;
+      voiceStyle.disabled = true;
       const target = interviewTargetInput.value.trim();
       if (!target) {
         appendTranscriptLine('System', 'Set interview target first.');
         interviewTargetInput.focus();
+        voiceStyle.disabled = false;
         return;
       }
 
@@ -634,6 +648,7 @@
         interviewTarget = target;
         ws.send(JSON.stringify({
           type: 'startInterview',
+          voiceStyle: voiceStyle.value,
           interviewTarget,
         }));
 
