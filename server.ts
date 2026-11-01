@@ -143,6 +143,15 @@ function createApplicationServer() {
 
   const app = new Hono();
 
+  // Keep protected screens hidden until Firebase restores and verifies browser sign-in.
+  app.use('*', async (c, next) => {
+    await next();
+    if (!['/interview', '/coding', '/history'].includes(c.req.path) || !c.res.headers.get('Content-Type')?.includes('text/html')) return;
+    const html = await c.res.clone().text();
+    c.header('Cache-Control', 'no-store');
+    c.res = new Response(html.replace('<head>', '<head><style id="account-gate">body{visibility:hidden!important}</style><script type="module" src="/assets/page-access.js"></script>'), { status: c.res.status, headers: c.res.headers });
+  });
+
   registerAccounts(app);
   registerDesktopAuth(app);
   app.get('/api/avatar', c => c.json({ character: '/assets/models/interviewer-demo.glb', license: 'AvatarSDK non-commercial example; see /assets/models/ATTRIBUTION.md' }));
